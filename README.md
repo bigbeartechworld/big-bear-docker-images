@@ -12,9 +12,9 @@ If you have a suggestion for an app, please post in the [BigBearCommunity](https
 
 ## Apps
 
-| App Name   | Version | Video |
-| ---------- | ------- | ----- |
-| Pocketbase | 0.19.1  |       |
+| App Name   | Version | Video | Docs                                                                                              |
+| ---------- | ------- | ----- | ------------------------------------------------------------------------------------------------- |
+| Pocketbase | 0.19.1  |       | [Documentation](https://community.bigbeartechworld.com/t/pocketbase-is-on-bigbeardockerimages/28) |
 
 ## Contributions
 
