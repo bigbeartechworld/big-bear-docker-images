@@ -19,4 +19,3 @@ If you have a suggestion for an app, please post in the [BigBearCommunity](https
 ## Contributions
 
 We warmly welcome and deeply appreciate all contributions, no matter how big or small they may be! Thank you from the bottom of our hearts ❤️
-# big-bear-docker-images
