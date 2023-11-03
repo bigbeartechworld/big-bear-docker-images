@@ -38,6 +38,8 @@ jobs:
         with:
           push: true
           platforms: linux/amd64,linux/arm64,linux/arm/v7
+          context: ./pihole-unbound
+          file: ./pihole-unbound/Dockerfile
           tags: |
             bigbeartechworld/big-bear-pihole-unbound:latest
             bigbeartechworld/big-bear-pihole-unbound:${{ env.pihole_unbound_version }}
