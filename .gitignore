@@ -2,3 +2,5 @@ unbound/*
 .DS_Store
 pocketbase/build.log
 pocketbase/build.sh
+pihole-unbound/build.log
+pihole-unbound/build.sh
