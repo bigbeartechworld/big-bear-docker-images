@@ -14,6 +14,10 @@ jobs:
       - name: Checkout project
         uses: actions/checkout@v2.3.4
 
+      # Step to update the root.hints file
+      - name: Update root.hints
+        run: curl -sSL https://www.internic.net/domain/named.root -o pihole-unbound/unbound/root.hints
+
       # New step to read the VERSION file and set the version as an output
       - name: Get the version
         id: get_version
