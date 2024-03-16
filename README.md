@@ -15,7 +15,7 @@ If you have a suggestion for an app, please post in the [BigBearCommunity](https
 | Application        | Version   | Video | Docs                                                                                                          |
 | ------------------ | --------- | ----- | ------------------------------------------------------------------------------------------------------------- |
 | Pihole and Unbound | 2024.02.2 |       | [Documentation](https://community.bigbeartechworld.com/t/added-pihole-and-unbound-to-bigbeardockerimages/192) |
-| Pocketbase         | 0.19.1    |       | [Documentation](https://community.bigbeartechworld.com/t/pocketbase-is-on-bigbeardockerimages/28)             |
+| Pocketbase         | 0.22.4    |       | [Documentation](https://community.bigbeartechworld.com/t/pocketbase-is-on-bigbeardockerimages/28)             |
 
 ## Contributions
 
