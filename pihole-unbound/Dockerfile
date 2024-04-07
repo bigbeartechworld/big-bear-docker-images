@@ -1,5 +1,5 @@
 # Use pihole base image
-FROM pihole/pihole:2024.02.2
+FROM pihole/pihole:2024.03.2
 
 # Set environment variables for Unbound installation
 ENV DEBIAN_FRONTEND=noninteractive
