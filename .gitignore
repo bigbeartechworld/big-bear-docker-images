@@ -4,3 +4,5 @@ pocketbase/build.log
 pocketbase/build.sh
 pihole-unbound/build.log
 pihole-unbound/build.sh
+genmon/build.log
+genmon/build.sh
