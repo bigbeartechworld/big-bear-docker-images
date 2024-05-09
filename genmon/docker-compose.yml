@@ -12,7 +12,6 @@ services:
       - TZ=America/Chicago # Set the timezone to 'America/Chicago'
     # Ports to expose, mapping the host port to the container port
     ports:
-      - "20022:22" # Map TCP port 22 in the container to port 20022 on the host
       - "38443:443" # Map TCP port 443 in the container to port 38443 on the host
       - "8000:8000" # Map TCP port 8000 in the container to port 8000 on the host
     # Define the restart policy for the service container
