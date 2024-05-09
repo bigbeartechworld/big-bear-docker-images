@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Ensure the non-root user can write where necessary
+# Ensure the /var/log/startup.log file exists
 touch /var/log/startup.log
 
-# If you need to modify configurations owned by root, you need to adjust this beforehand or run as root
+# Change the environment variable to use serial TCP in the genmon.conf file
 sed -i "s/use_serial_tcp = .*/use_serial_tcp = $USE_SERIAL_TCP/g" /etc/genmon/genmon.conf
 
 # Start the application
