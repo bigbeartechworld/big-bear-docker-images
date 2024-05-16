@@ -1,6 +1,5 @@
 # Use a specific tag for a stable and predictable base image.
 FROM python:3.8-slim
-# Base image python:3.8-slim is chosen for its minimal size while still providing Python 3.8.
 
 # Set non-interactive mode and define timezone to avoid unnecessary prompts during build.
 ENV DEBIAN_FRONTEND=noninteractive TZ="America/Chicago"
@@ -12,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 
-# Expose necessary ports for HTTPS, and the application.
+# Expose necessary ports for HTTPS and the application.
 EXPOSE 443 8000
 
 # Set the working directory for any subsequent instructions.
@@ -28,7 +27,6 @@ RUN git clone --depth 1 http://github.com/jgyates/genmon.git && \
 
 # Initialize the application and configure it.
 RUN /git/genmon/genmonmaint.sh -i -n
-# Run initial setup scripts.
 
 # Clean up apt caches.
 RUN apt-get clean && \
@@ -40,5 +38,5 @@ COPY entrypoint.sh /entrypoint.sh
 # Make the entrypoint script executable.
 RUN chmod +x /entrypoint.sh
 
-# Set the custom entrypoint script as the entrypoint
+# Set the custom entrypoint script as the entrypoint.
 ENTRYPOINT ["/entrypoint.sh"]
