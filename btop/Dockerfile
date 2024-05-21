@@ -8,8 +8,7 @@ RUN apt-get update && apt-get install -y \
     iproute2 \
     git \
     golang-go \
-    && apt-get clean \
-    vim
+    && apt-get clean
 
 # Clone, build, and install gotty
 RUN git clone https://github.com/sorenisanerd/gotty.git /tmp/gotty && \
