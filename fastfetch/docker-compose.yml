@@ -1,0 +1,24 @@
+version: "3.8" # Specify the version of the Docker Compose file format
+
+services:
+  # Define the service named 'big-bear-fastfetch'
+  big-bear-fastfetch:
+    # Build the Docker image using the Dockerfile in the current directory
+    build: .
+    # Name the container 'big-bear-fastfetch' for easier identification
+    container_name: big-bear-fastfetch
+    # Run the container in privileged mode to allow access to system metrics
+    privileged: true
+    # Mount necessary volumes for accessing system information
+    volumes:
+      # Mount the host's /proc directory to the container's /proc directory
+      - /proc:/proc
+      # Mount the host's /sys directory to the container's /sys directory
+      - /sys:/sys
+      # Mount the host's /dev directory to the container's /dev directory
+      - /dev:/dev
+      # Mount the host's /etc/localtime file to the container's /etc/localtime file (read-only)
+      - /etc/localtime:/etc/localtime:ro
+    # Map port 7681 on the host to port 7681 on the container
+    ports:
+      - "7681:7681"
