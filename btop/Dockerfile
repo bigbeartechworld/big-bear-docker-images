@@ -1,35 +1,29 @@
 FROM debian:latest
 
-# Install required packages for building ttyd and running btop
+# Install required packages for building gotty and running btop
 RUN apt-get update && apt-get install -y \
     btop \
     procps \
     curl \
     iproute2 \
     git \
-    cmake \
-    g++ \
-    pkg-config \
-    libjson-c-dev \
-    libwebsockets-dev \
-    && apt-get clean
+    golang-go \
+    && apt-get clean \
+    vim
 
-# Clone, build, and install ttyd
-RUN git clone https://github.com/tsl0922/ttyd.git /tmp/ttyd && \
-    cd /tmp/ttyd && \
-    mkdir build && \
-    cd build && \
-    cmake .. && \
-    make && \
-    make install && \
+# Clone, build, and install gotty
+RUN git clone https://github.com/sorenisanerd/gotty.git /tmp/gotty && \
+    cd /tmp/gotty && \
+    go build && \
+    mv gotty /usr/local/bin/ && \
     cd / && \
-    rm -rf /tmp/ttyd
+    rm -rf /tmp/gotty
 
 # Set the terminal to support UTF-8
 ENV LANG C.UTF-8
 
-# Expose the port ttyd will run on
+# Expose the port gotty will run on
 EXPOSE 7681
 
-# Start ttyd and run btop
-CMD ["ttyd", "-p", "7681", "btop"]
+# Start gotty and run btop
+CMD ["gotty", "-p", "7681", "-w", "btop"]
