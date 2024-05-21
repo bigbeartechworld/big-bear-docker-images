@@ -29,4 +29,4 @@ ENV NCDU_PATH /
 EXPOSE 7681
 
 # Start gotty and run ncdu with the specified path
-CMD ["gotty", "-p", "7681", "-w", "ncdu", "$NCDU_PATH"]
+CMD gotty -p 7681 -w ncdu $NCDU_PATH
