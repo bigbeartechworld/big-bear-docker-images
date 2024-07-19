@@ -1,14 +1,13 @@
-FROM debian:latest
+FROM alpine:latest
 
 # Install required packages for building gotty and running btop
-RUN apt-get update && apt-get install -y \
+RUN apk add --no-cache \
     btop \
     procps \
     curl \
     iproute2 \
     git \
-    golang-go \
-    && apt-get clean
+    go
 
 # Clone, build, and install gotty
 RUN git clone https://github.com/sorenisanerd/gotty.git /tmp/gotty && \
