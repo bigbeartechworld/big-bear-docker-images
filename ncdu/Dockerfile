@@ -1,23 +1,28 @@
-FROM debian:latest
+FROM golang:alpine as builder
 
-# Install required packages
-RUN apt-get update && apt-get install -y \
+# Install necessary packages
+RUN apk add --no-cache \
+    git \
+    vim
+
+# Clone and build gotty
+RUN git clone https://github.com/sorenisanerd/gotty.git /gotty && \
+    cd /gotty && \
+    go build
+
+FROM alpine:latest
+
+# Install ncdu, procps, curl, iproute2, and clean up
+RUN apk add --no-cache \
     ncdu \
     procps \
     curl \
     iproute2 \
-    git \
-    golang-go \
     vim \
-    && apt-get clean
+    && rm -rf /var/cache/apk/*
 
-# Clone, build, and install gotty
-RUN git clone https://github.com/sorenisanerd/gotty.git /tmp/gotty && \
-    cd /tmp/gotty && \
-    go build && \
-    mv gotty /usr/local/bin/ && \
-    cd / && \
-    rm -rf /tmp/gotty
+# Copy the built gotty binary from the builder stage
+COPY --from=builder /gotty/gotty /usr/local/bin/gotty
 
 # Set the terminal to support UTF-8
 ENV LANG C.UTF-8
