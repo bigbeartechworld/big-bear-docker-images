@@ -1,5 +1,5 @@
 # Use a small base image
-FROM alpine:3.18
+FROM alpine:3.20
 
 # Install dependencies
 RUN apk --no-cache add ca-certificates wget unzip
