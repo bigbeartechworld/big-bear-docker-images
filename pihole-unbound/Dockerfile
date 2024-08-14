@@ -21,11 +21,15 @@ COPY unbound/root.hints /var/lib/unbound/root.hints
 # Set permissions for Unbound
 RUN chown -R unbound:unbound /var/lib/unbound
 
-# # Copy Unbound configuration files
+# Copy Unbound configuration files
 COPY unbound/unbound.conf /etc/unbound/unbound.conf
 
 # Copy Pi-hole configuration files
 COPY pihole/setupVars.conf /etc/pihole/setupVars.conf
+
+# Set correct permissions for Pi-hole files
+RUN chown -R www-data:www-data /etc/pihole && \
+    chmod -R 755 /etc/pihole
 
 # Entrypoint
 ENTRYPOINT ./s6-init
