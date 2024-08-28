@@ -23,5 +23,8 @@ ENV LANG C.UTF-8
 # Expose the port gotty will run on
 EXPOSE 7681
 
+# Define a volume to persist btop settings
+VOLUME ["/root/.config/btop"]
+
 # Start gotty and run btop
 CMD ["gotty", "-p", "7681", "-w", "btop"]

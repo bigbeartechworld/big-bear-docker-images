@@ -31,5 +31,8 @@ ENV LANG C.UTF-8
 # Expose the port ttyd will run on
 EXPOSE 7681
 
+# Define a volume to persist btop settings
+VOLUME ["/root/.config/btop"]
+
 # Start ttyd and run btop
 CMD ["ttyd", "-p", "7681", "-W", "btop"]

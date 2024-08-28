@@ -1,7 +1,6 @@
-version: "3.8" # Specify the version of the Docker Compose file format
+version: "3.8"
 
 services:
-  # Define the service named 'big-bear-btop'
   big-bear-btop:
     # Build the Docker image using the Dockerfile in the current directory
     build: .
@@ -19,6 +18,8 @@ services:
       - /dev:/dev
       # Mount the host's /etc/localtime file to the container's /etc/localtime file (read-only)
       - /etc/localtime:/etc/localtime:ro
+      # Mount a local directory for persisting btop configuration files
+      - /path/to/local/btop/config:/root/.config/btop
     # Map port 7681 on the host to port 7681 on the container
     ports:
       - "7681:7681"
