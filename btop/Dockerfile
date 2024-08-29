@@ -23,6 +23,9 @@ ENV LANG C.UTF-8
 # Create default config directory
 RUN mkdir -p /root/.config/btop.default
 
+# Create themes directory
+RUN mkdir -p /root/.config/btop/themes
+
 # Copy the default btop.conf to a separate directory
 COPY btop.conf /root/.config/btop.default/btop.conf
 
