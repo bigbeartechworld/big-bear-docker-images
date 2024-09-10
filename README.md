@@ -14,8 +14,12 @@ If you have a suggestion for an app, please post in the [BigBearCommunity](https
 
 | Application        | Version   | Video | Docs                                                                                                          |
 | ------------------ | --------- | ----- | ------------------------------------------------------------------------------------------------------------- |
+| BTOP               | 0.0.8     |       |                                                                                                               |
+| Fastfetch          | 0.0.6     |       |                                                                                                               |
+| NCDU               | 0.0.2     |       |                                                                                                               |
 | Pihole and Unbound | 2024.03.2 |       | [Documentation](https://community.bigbeartechworld.com/t/added-pihole-and-unbound-to-bigbeardockerimages/192) |
 | Pocketbase         | 0.22.8    |       | [Documentation](https://community.bigbeartechworld.com/t/pocketbase-is-on-bigbeardockerimages/28)             |
+| Unbound            | 1.20.0    |       |                                                                                                               |
 
 ## Contributions
 
