@@ -1,5 +1,4 @@
 #!/command/with-contenv bash
-# Exit immediately if a command exits with a non-zero status.
 set -e
 
 # Enable debugging if needed
@@ -16,14 +15,10 @@ LOGFILE="$LOGDIR/unbound.log"
 HELPER="/usr/lib/unbound/package-helper"
 
 # Ensure the Unbound log directory exists
-if [ ! -d "$LOGDIR" ]; then
-    mkdir -p "$LOGDIR"
-fi
+mkdir -p "$LOGDIR"
 
 # Ensure the Unbound log file exists
-if [ ! -f "$LOGFILE" ]; then
-    touch "$LOGFILE"
-fi
+touch "$LOGFILE"
 
 # Ensure the Unbound binary is executable
 if [ ! -x "$DAEMON" ]; then
@@ -44,20 +39,4 @@ $HELPER root_trust_anchor_update >> "$LOGFILE" 2>&1
 
 # Start Unbound
 s6-echo "Running Unbound with options: $DAEMON_OPTS"
-$DAEMON -d $DAEMON_OPTS >> "$LOGFILE" 2>&1 &
-
-echo $! > "$PIDFILE"
-
-# Simple check to see if Unbound started
-if ! pgrep -F "$PIDFILE" > /dev/null; then
-    s6-echo "Unbound failed to start."
-    exit 1
-fi
-
-s6-echo "Unbound started successfully with PID $(cat $PIDFILE)"
-
-# Trap SIGTERM and SIGINT to perform a clean shutdown
-trap 's6-echo "Stopping Unbound"; kill $(cat $PIDFILE); wait $(cat $PIDFILE); exit 0;' SIGTERM SIGINT
-
-# Wait for Unbound to exit
-wait $(cat $PIDFILE)
+exec $DAEMON -d $DAEMON_OPTS >> "$LOGFILE" 2>&1
