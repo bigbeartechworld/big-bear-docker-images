@@ -14,7 +14,7 @@ jobs:
 
     steps:
       - name: Checkout project
-        uses: actions/checkout@v2.3.4
+        uses: actions/checkout@v2.7.0
 
       # Step to update the root.hints file
       - name: Update root.hints
