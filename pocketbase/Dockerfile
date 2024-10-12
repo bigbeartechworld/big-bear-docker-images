@@ -5,7 +5,7 @@ FROM alpine:3.20
 RUN apk --no-cache add ca-certificates wget unzip
 
 # Set Pocketbase version
-ARG POCKETBASE_VERSION=0.22.11
+ARG POCKETBASE_VERSION=0.22.21
 
 # Detect the architecture of the building machine
 ARG TARGETARCH
