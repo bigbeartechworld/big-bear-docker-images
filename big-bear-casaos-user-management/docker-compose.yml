@@ -1,5 +1,5 @@
 services:
-  big-bear-casaos-user-manager:
+  big-bear-casaos-user-management:
     # The service name for the user management system
     image: bigbeartechworld/big-bear-casaos-user-management:0.0.1
     # The Docker image to use for this service, with the specified version tag
@@ -7,39 +7,39 @@ services:
     # A custom name for the container, making it easier to identify
 
     ports:
-      - "5000:5000"
       # Exposing port 5000 on the host and mapping it to port 5000 in the container
+      - "5000:5000"
 
     volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
       # Mounting the cgroup filesystem in read-only mode for system resource monitoring
-      - /var/lib/casaos/db:/var/lib/casaos/db
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
       # Persisting CasaOS database files to retain data across container restarts
-      - /run/systemd/system:/run/systemd/system
+      - /var/lib/casaos/db:/var/lib/casaos/db
       # Mounting systemd's runtime directory for integration with the host system
-      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
+      - /run/systemd/system:/run/systemd/system
       # Providing access to the D-Bus system bus for communication with host services
+      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
 
-    restart: unless-stopped
     # Ensures the container restarts automatically unless explicitly stopped
+    restart: unless-stopped
 
     environment:
-      - FLASK_APP=app.py
       # Sets the Flask application entry point
-      - FLASK_ENV=production
+      - FLASK_APP=app.py
       # Configures Flask to run in production mode
-      - ADMIN_USERNAME=casaos
+      - FLASK_ENV=production
       # Specifies the admin username for the service
-      - ADMIN_PASSWORD=casaos
+      - ADMIN_USERNAME=casaos
       # Specifies the admin password for the service
+      - ADMIN_PASSWORD=casaos
 
-    privileged: true
     # Grants the container extended privileges, necessary for some operations
+    privileged: true
 
     cap_add:
-      - SYS_ADMIN
       # Adds the SYS_ADMIN capability to the container for advanced administrative actions
+      - SYS_ADMIN
 
     security_opt:
-      - seccomp:unconfined
       # Disables the default seccomp security profile to allow unrestricted system calls
+      - seccomp:unconfined
