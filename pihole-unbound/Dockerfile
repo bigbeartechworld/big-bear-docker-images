@@ -1,5 +1,5 @@
 # Use pihole base image
-FROM pihole/pihole:2024.07.0
+FROM pihole/pihole:2025.02.1
 
 # Set environment variables for Unbound installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -29,7 +29,7 @@ COPY pihole/setupVars.conf /etc/pihole/setupVars.conf
 
 # Set correct permissions for Pi-hole files
 RUN chown -R www-data:www-data /etc/pihole && \
-    chmod -R 755 /etc/pihole
+  chmod -R 755 /etc/pihole
 
 # Entrypoint
 ENTRYPOINT ./s6-init
