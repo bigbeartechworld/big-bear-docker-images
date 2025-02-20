@@ -1,11 +1,9 @@
 # Use pihole base image
 FROM pihole/pihole:2025.02.1
 
-# Set environment variables for Unbound installation
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Update package list, install Unbound
-RUN apt-get update && apt-get install -y --no-install-recommends unbound
+# Install Unbound using apk (Alpine package manager)
+RUN apk update && apk add --no-cache unbound \
+  && rm -rf /var/cache/apk/*
 
 # Create the Unbound service directory
 RUN mkdir -p /etc/services.d/unbound
@@ -19,6 +17,7 @@ RUN chmod +x /etc/services.d/unbound/run
 COPY unbound/root.hints /var/lib/unbound/root.hints
 
 # Set permissions for Unbound
+# Note: Alpine uses 'unbound' user/group by default for the unbound package
 RUN chown -R unbound:unbound /var/lib/unbound
 
 # Copy Unbound configuration files
@@ -27,12 +26,8 @@ COPY unbound/unbound.conf /etc/unbound/unbound.conf
 # Copy Pi-hole configuration files
 COPY pihole/setupVars.conf /etc/pihole/setupVars.conf
 
-# Set correct permissions for Pi-hole files
-RUN chown -R www-data:www-data /etc/pihole && \
-  chmod -R 755 /etc/pihole
-
 # Entrypoint
-ENTRYPOINT ./s6-init
+ENTRYPOINT ["./s6-init"]
 
 # Healthcheck for Pi-hole and Unbound
 HEALTHCHECK --interval=1m --timeout=10s \
