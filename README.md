@@ -12,14 +12,18 @@ If you have a suggestion for an app, please post in the [BigBearCommunity](https
 
 ## Apps
 
-| Application        | Version   | Video | Docs                                                                                                          |
-| ------------------ | --------- | ----- | ------------------------------------------------------------------------------------------------------------- |
-| BTOP               | 0.0.8     |       |                                                                                                               |
-| Fastfetch          | 0.0.6     |       |                                                                                                               |
-| NCDU               | 0.0.2     |       |                                                                                                               |
-| Pihole and Unbound | 2024.03.2 |       | [Documentation](https://community.bigbeartechworld.com/t/added-pihole-and-unbound-to-bigbeardockerimages/192) |
-| Pocketbase         | 0.22.8    |       | [Documentation](https://community.bigbeartechworld.com/t/pocketbase-is-on-bigbeardockerimages/28)             |
-| Unbound            | 1.20.0    |       |                                                                                                               |
+| Application | Docker Image | Version | YouTube Video | Docs |
+| --- | --- | --- | --- | --- |
+| Big Bear CasaOS User Management | bigbeartechworld/big-bear-casaos-user-management | 0.0.1 | [YouTube Video](https://youtu.be/-a9k8fLAbRE) | [Docs](https://community.bigbeartechworld.com/t/added-bigbearcasaos-user-management-to-bigbearcasaos/2227?u=dragonfire1119) |
+| BTOP | bigbeartechworld/big-bear-btop | 0.0.8 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt96nLpa72tqLIGl54gSmSAS) |  |
+| FastFetch | bigbeartechworld/big-bear-fastfetch | 0.0.2 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt_o9i99IYOCVKfWkBvErgth) |  |
+| Genmon | bigbeartechworld/big-bear-genmon | 0.0.6 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt_g0nT2F7l0a1gvGZl57CWn) |  |
+| NCDU | bigbeartechworld/big-bear-ncdu | 0.0.2 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt9Au1cUiVkyx25bOxAbhF83) |  |
+| Nextcloud with SMBClient | bigbeartechworld/big-bear-nextcloud-with-smbclient | 0.0.5 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt9Au1cUiVkyx25bOxAbhF83) |  |
+| Pihole and Unbound | bigbeartechworld/big-bear-pihole-unbound | 2025.02.1 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt_21TJEBkhIm52aU-w3K4vi) | [Docs]([Documentation](https://community.bigbeartechworld.com/t/added-pihole-and-unbound-to-bigbeardockerimages/192)) |
+| PocketBase | bigbeartechworld/big-bear-pocketbase | 0.22.21 |  | [Docs]([Documentation](https://community.bigbeartechworld.com/t/pocketbase-is-on-bigbeardockerimages/28)) |
+| Unbound | bigbeartechworld/big-bear-unbound | 1.20.0 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt9_yeFJvG6Nhby8gTVStxb0) |  |
+
 
 ## Contributions
 
