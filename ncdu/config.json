@@ -1,0 +1,8 @@
+{
+  "id": "ncdu",
+  "name": "NCDU",
+  "version": "0.0.2",
+  "image": "bigbeartechworld/big-bear-ncdu",
+  "youtube": "https://www.youtube.com/playlist?list=PL2RAscIdkpt9Au1cUiVkyx25bOxAbhF83",
+  "docs_link": ""
+}
