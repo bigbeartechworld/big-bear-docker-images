@@ -1,6 +1,6 @@
 ## Big Bear Docker Images
 
-This repository contains the docker images that BigBearTechWorld has built for other projects.
+This repository houses a collection of carefully crafted Docker images, meticulously designed and maintained by BigBearTechWorld to power various applications and services. Our images are optimized for performance, security, and ease of use, making them ideal for both development and production environments.
 
 ## Docker Image Suggestions
 
