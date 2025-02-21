@@ -5,13 +5,6 @@ FROM pihole/pihole:2025.02.1
 RUN apk update && apk add --no-cache unbound \
   && rm -rf /var/cache/apk/*
 
-# Create the Unbound service directory
-RUN mkdir -p /etc/services.d/unbound
-
-# Create the Unbound service run script
-COPY unbound/unbound_run_script /etc/services.d/unbound/run
-RUN chmod +x /etc/services.d/unbound/run
-
 # Copy the root hints file
 # https://www.internic.net/domain/named.root
 COPY unbound/root.hints /var/lib/unbound/root.hints
@@ -26,8 +19,12 @@ COPY unbound/unbound.conf /etc/unbound/unbound.conf
 # Copy Pi-hole configuration files
 COPY pihole/setupVars.conf /etc/pihole/setupVars.conf
 
-# Entrypoint
-ENTRYPOINT ["./s6-init"]
+# Copy the startup script to a standard location and make it executable
+COPY unbound/start-unbound.sh /start-unbound.sh
+RUN chmod +x /start-unbound.sh
+
+# Entrypoint - using the absolute path with brackets
+ENTRYPOINT ["/start-unbound.sh"]
 
 # Healthcheck for Pi-hole and Unbound
 HEALTHCHECK --interval=1m --timeout=10s \
