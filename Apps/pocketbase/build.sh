@@ -2,7 +2,7 @@
 
 # Set image name and tag
 IMAGE_NAME="bigbeartechworld/big-bear-pocketbase"
-TAG="0.22.8"
+TAG="0.25.7"
 
 # Check if docker is installed
 if ! command -v docker &> /dev/null; then
