@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "fastfetch/**"
+      - "Apps/fastfetch/**"
 
 jobs:
   create:
@@ -19,7 +19,7 @@ jobs:
       # New step to read the VERSION file and set the version as an output
       - name: Get the version
         id: get_version
-        run: echo "fastfetch_version=$(cat fastfetch/VERSION)" >> $GITHUB_ENV
+        run: echo "fastfetch_version=$(cat Apps/fastfetch/VERSION)" >> $GITHUB_ENV
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@master
@@ -40,8 +40,8 @@ jobs:
         with:
           push: true
           platforms: linux/amd64,linux/arm64
-          context: ./fastfetch
-          file: ./fastfetch/Dockerfile
+          context: ./Apps/fastfetch
+          file: ./Apps/fastfetch/Dockerfile
           tags: |
             bigbeartechworld/big-bear-fastfetch:latest
             bigbeartechworld/big-bear-fastfetch:${{ env.fastfetch_version }}

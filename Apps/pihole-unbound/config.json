@@ -1,0 +1,8 @@
+{
+  "id": "pihole-unbound",
+  "name": "Pihole and Unbound",
+  "version": "2025.02.1",
+  "image": "bigbeartechworld/big-bear-pihole-unbound",
+  "youtube": "https://www.youtube.com/playlist?list=PL2RAscIdkpt_21TJEBkhIm52aU-w3K4vi",
+  "docs_link": "[Documentation](https://community.bigbeartechworld.com/t/added-pihole-and-unbound-to-bigbeardockerimages/192)"
+}

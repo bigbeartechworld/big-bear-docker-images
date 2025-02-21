@@ -19,7 +19,7 @@ jobs:
       # New step to read the VERSION file and set the version as an output
       - name: Get the version
         id: get_version
-        run: echo "genmon_version=$(cat genmon/VERSION)" >> $GITHUB_ENV
+        run: echo "genmon_version=$(cat Apps/genmon/VERSION)" >> $GITHUB_ENV
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@master
@@ -40,8 +40,8 @@ jobs:
         with:
           push: true
           platforms: linux/amd64,linux/arm64
-          context: ./genmon
-          file: ./genmon/Dockerfile
+          context: ./Apps/genmon
+          file: ./Apps/genmon/Dockerfile
           tags: |
             bigbeartechworld/big-bear-genmon:latest
             bigbeartechworld/big-bear-genmon:${{ env.genmon_version }}

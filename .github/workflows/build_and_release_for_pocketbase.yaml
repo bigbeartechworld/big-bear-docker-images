@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "pocketbase/**"
+      - "Apps/pocketbase/**"
 
 jobs:
   create:
@@ -19,7 +19,7 @@ jobs:
       # New step to read the VERSION file and set the version as an output
       - name: Get the version
         id: get_version
-        run: echo "pocketbase_version=$(cat pocketbase/VERSION)" >> $GITHUB_ENV
+        run: echo "pocketbase_version=$(cat Apps/pocketbase/VERSION)" >> $GITHUB_ENV
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@master
@@ -40,8 +40,8 @@ jobs:
         with:
           push: true
           platforms: linux/amd64,linux/arm64
-          context: ./pocketbase
-          file: ./pocketbase/Dockerfile
+          context: ./Apps/pocketbase
+          file: ./Apps/pocketbase/Dockerfile
           tags: |
             bigbeartechworld/big-bear-pocketbase:latest
             bigbeartechworld/big-bear-pocketbase:${{ env.pocketbase_version }}
