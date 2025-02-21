@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "nextcloud-with-smbclient/**"
+      - "Apps/nextcloud-with-smbclient/**"
 
 jobs:
   create:
@@ -19,7 +19,7 @@ jobs:
       # New step to read the VERSION file and set the version as an output
       - name: Get the version
         id: get_version
-        run: echo "nextcloud_with_smbclient_version=$(cat nextcloud-with-smbclient/VERSION)" >> $GITHUB_ENV
+        run: echo "nextcloud_with_smbclient_version=$(cat Apps/nextcloud-with-smbclient/VERSION)" >> $GITHUB_ENV
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@master
@@ -40,8 +40,8 @@ jobs:
         with:
           push: true
           platforms: linux/amd64,linux/arm64
-          context: ./nextcloud-with-smbclient
-          file: ./nextcloud-with-smbclient/Dockerfile
+          context: ./Apps/nextcloud-with-smbclient
+          file: ./Apps/nextcloud-with-smbclient/Dockerfile
           tags: |
             bigbeartechworld/big-bear-nextcloud-with-smbclient:latest
             bigbeartechworld/big-bear-nextcloud-with-smbclient:${{ env.nextcloud_with_smbclient_version }}

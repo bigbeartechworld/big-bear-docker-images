@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "btop/**"
+      - "Apps/btop/**"
 
 jobs:
   create:
@@ -19,7 +19,7 @@ jobs:
       # New step to read the VERSION file and set the version as an output
       - name: Get the version
         id: get_version
-        run: echo "btop_version=$(cat btop/VERSION)" >> $GITHUB_ENV
+        run: echo "btop_version=$(cat Apps/btop/VERSION)" >> $GITHUB_ENV
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@master
@@ -40,8 +40,8 @@ jobs:
         with:
           push: true
           platforms: linux/amd64,linux/arm64
-          context: ./btop
-          file: ./btop/Dockerfile
+          context: ./Apps/btop
+          file: ./Apps/btop/Dockerfile
           tags: |
             bigbeartechworld/big-bear-btop:latest
             bigbeartechworld/big-bear-btop:${{ env.btop_version }}

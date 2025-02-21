@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "pihole-unbound/**"
+      - "Apps/pihole-unbound/**"
 
 jobs:
   create:
@@ -18,12 +18,12 @@ jobs:
 
       # Step to update the root.hints file
       - name: Update root.hints
-        run: curl -sSL https://www.internic.net/domain/named.root -o pihole-unbound/unbound/root.hints
+        run: curl -sSL https://www.internic.net/domain/named.root -o Apps/pihole-unbound/unbound/root.hints
 
       # New step to read the VERSION file and set the version as an output
       - name: Get the version
         id: get_version
-        run: echo "pihole_unbound_version=$(cat pihole-unbound/VERSION)" >> $GITHUB_ENV
+        run: echo "pihole_unbound_version=$(cat Apps/pihole-unbound/VERSION)" >> $GITHUB_ENV
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@master
@@ -44,8 +44,8 @@ jobs:
         with:
           push: true
           platforms: linux/amd64,linux/arm64,linux/arm/v7
-          context: ./pihole-unbound
-          file: ./pihole-unbound/Dockerfile
+          context: ./Apps/pihole-unbound
+          file: ./Apps/pihole-unbound/Dockerfile
           tags: |
             bigbeartechworld/big-bear-pihole-unbound:latest
             bigbeartechworld/big-bear-pihole-unbound:${{ env.pihole_unbound_version }}

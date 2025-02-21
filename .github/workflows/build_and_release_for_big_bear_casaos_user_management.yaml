@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "big-bear-casaos-user-management/**"
+      - "Apps/big-bear-casaos-user-management/**"
 
 jobs:
   create:
@@ -19,7 +19,7 @@ jobs:
       # New step to read the VERSION file and set the version as an output
       - name: Get the version
         id: get_version
-        run: echo "big_bear_casaos_user_management_version=$(cat big-bear-casaos-user-management/VERSION)" >> $GITHUB_ENV
+        run: echo "big_bear_casaos_user_management_version=$(cat Apps/big-bear-casaos-user-management/VERSION)" >> $GITHUB_ENV
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@master
@@ -40,8 +40,8 @@ jobs:
         with:
           push: true
           platforms: linux/amd64,linux/arm64
-          context: ./big-bear-casaos-user-management
-          file: ./big-bear-casaos-user-management/Dockerfile
+          context: ./Apps/big-bear-casaos-user-management
+          file: ./Apps/big-bear-casaos-user-management/Dockerfile
           tags: |
             bigbeartechworld/big-bear-casaos-user-management:latest
             bigbeartechworld/big-bear-casaos-user-management:${{ env.big_bear_casaos_user_management_version }}
