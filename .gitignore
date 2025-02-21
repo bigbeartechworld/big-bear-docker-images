@@ -1,12 +1,25 @@
-unbound/*
-.DS_Store
+# Build artifacts
 pocketbase/build.log
 pocketbase/build.sh
 pihole-unbound/build.log
 pihole-unbound/build.sh
 genmon/build.log
 genmon/build.sh
-genmon/build.log
-genmon/build.sh
 big-bear-casaos-user-management/build.log
 big-bear-casaos-user-management/build.sh
+
+# Node.js specific
+node_modules/
+package-lock.json
+
+# System files
+.DS_Store
+
+# Secrets
+github.secrets
+
+# IDE specific
+.vscode/
+
+# Unbound
+unbound/*
