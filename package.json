@@ -1,7 +1,7 @@
 {
-  "name": "big-bear-casaos",
+  "name": "big-bear-docker-images",
   "version": "1.0.0",
-  "description": "",
+  "description": "Big Bear Docker Images",
   "main": "",
   "scripts": {
     "commit": "git-cz",
@@ -10,14 +10,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bigbeartechworld/big-bear-casaos.git"
+    "url": "git+https://github.com/bigbeartechworld/big-bear-docker-images.git"
   },
-  "author": "",
-  "license": "GNU General Public License v3.0",
+  "author": "BigBearTechWorld",
+  "license": "MIT",
   "bugs": {
-    "url": "https://github.com/bigbeartechworld/big-bear-casaos/issues"
+    "url": "https://github.com/bigbeartechworld/big-bear-docker-images/issues"
   },
-  "homepage": "https://github.com/bigbeartechworld/big-bear-casaos#readme",
+  "homepage": "https://github.com/bigbeartechworld/big-bear-docker-images#readme",
   "devDependencies": {
     "@commitlint/cli": "^19.3.0",
     "@commitlint/config-conventional": "^19.2.2",
