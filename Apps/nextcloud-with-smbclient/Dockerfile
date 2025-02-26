@@ -1,4 +1,4 @@
-FROM nextcloud:30.0.6-apache
+FROM nextcloud:31.0.0-apache
 
 RUN set -e; \
     apt-get update && \
