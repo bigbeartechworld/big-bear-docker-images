@@ -49,6 +49,7 @@
             ></i>
             <input
               type="text"
+              id="userSearchInput"
               placeholder="Search users..."
               class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pl-9 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-w-[200px]"
             />
@@ -61,7 +62,12 @@
         <!-- Mobile view (card layout) -->
         <div class="block sm:hidden">
           {% for user in users %}
-          <div class="border-b p-4">
+          <div
+            class="border-b p-4 user-row"
+            data-username="{{ user[1] }}"
+            data-role="{{ user[2] }}"
+            data-id="{{ user[0] }}"
+          >
             <div class="flex items-center justify-between mb-2">
               <div class="flex items-center gap-2">
                 <div
@@ -141,7 +147,12 @@
           </thead>
           <tbody>
             {% for user in users %}
-            <tr class="border-b transition-colors hover:bg-muted/50">
+            <tr
+              class="border-b transition-colors hover:bg-muted/50 user-row"
+              data-username="{{ user[1] }}"
+              data-role="{{ user[2] }}"
+              data-id="{{ user[0] }}"
+            >
               <td class="p-4 px-4 sm:px-6 align-middle font-medium">
                 {{ user[0] }}
               </td>
@@ -762,5 +773,93 @@
       });
     }
   });
+  // User search functionality
+  const userSearchInput = document.getElementById("userSearchInput");
+  if (userSearchInput) {
+    userSearchInput.addEventListener("input", function () {
+      const searchTerm = this.value.toLowerCase().trim();
+      const userRows = document.querySelectorAll(".user-row");
+
+      userRows.forEach((row) => {
+        const username = row.getAttribute("data-username").toLowerCase();
+        const role = row.getAttribute("data-role").toLowerCase();
+        const id = row.getAttribute("data-id").toLowerCase();
+
+        // Check if any of the user data contains the search term
+        const matchesSearch =
+          username.includes(searchTerm) ||
+          role.includes(searchTerm) ||
+          id.includes(searchTerm);
+
+        // Show or hide the row based on the search
+        if (matchesSearch) {
+          row.style.display = "";
+        } else {
+          row.style.display = "none";
+        }
+      });
+
+      // Show a message if no results found
+      const mobileResults = document.querySelector(
+        '.block.sm\\:hidden .user-row:not([style*="display: none"])'
+      );
+      const desktopResults = document.querySelector(
+        '.hidden.sm\\:table .user-row:not([style*="display: none"])'
+      );
+
+      // Get the no results message elements or create them if they don't exist
+      let mobileNoResults = document.getElementById("mobile-no-results");
+      let desktopNoResults = document.getElementById("desktop-no-results");
+
+      if (!mobileNoResults) {
+        mobileNoResults = document.createElement("div");
+        mobileNoResults.id = "mobile-no-results";
+        mobileNoResults.className = "p-4 text-center text-muted-foreground";
+        mobileNoResults.textContent = "No users found";
+        document
+          .querySelector(".block.sm\\:hidden")
+          .appendChild(mobileNoResults);
+      }
+
+      if (!desktopNoResults) {
+        desktopNoResults = document.createElement("tr");
+        desktopNoResults.id = "desktop-no-results";
+        const td = document.createElement("td");
+        td.colSpan = 4;
+        td.className = "p-4 text-center text-muted-foreground";
+        td.textContent = "No users found";
+        desktopNoResults.appendChild(td);
+        document
+          .querySelector(".hidden.sm\\:table tbody")
+          .appendChild(desktopNoResults);
+      }
+
+      // Show or hide the no results message
+      mobileNoResults.style.display =
+        !mobileResults && searchTerm ? "block" : "none";
+      desktopNoResults.style.display =
+        !desktopResults && searchTerm ? "table-row" : "none";
+    });
+
+    // Add clear button functionality
+    const clearButton = document.createElement("button");
+    clearButton.type = "button";
+    clearButton.className =
+      "absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground hidden";
+    clearButton.innerHTML = '<i class="fas fa-times"></i>';
+    clearButton.style.display = "none";
+    userSearchInput.parentNode.appendChild(clearButton);
+
+    userSearchInput.addEventListener("input", function () {
+      clearButton.style.display = this.value ? "block" : "none";
+    });
+
+    clearButton.addEventListener("click", function () {
+      userSearchInput.value = "";
+      userSearchInput.dispatchEvent(new Event("input"));
+      this.style.display = "none";
+      userSearchInput.focus();
+    });
+  }
 </script>
 {% endblock %}
