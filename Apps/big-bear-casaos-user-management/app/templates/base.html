@@ -1,15 +1,451 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
   <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BigBearCasaOS User Management</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for icons -->
     <link
       rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
-    <!-- Add before closing body tag -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Configure Tailwind with Shadcn UI-inspired theme -->
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              border: "hsl(var(--border))",
+              input: "hsl(var(--input))",
+              ring: "hsl(var(--ring))",
+              background: "hsl(var(--background))",
+              foreground: "hsl(var(--foreground))",
+              primary: {
+                DEFAULT: "hsl(var(--primary))",
+                foreground: "hsl(var(--primary-foreground))",
+              },
+              secondary: {
+                DEFAULT: "hsl(var(--secondary))",
+                foreground: "hsl(var(--secondary-foreground))",
+              },
+              destructive: {
+                DEFAULT: "hsl(var(--destructive))",
+                foreground: "hsl(var(--destructive-foreground))",
+              },
+              muted: {
+                DEFAULT: "hsl(var(--muted))",
+                foreground: "hsl(var(--muted-foreground))",
+              },
+              accent: {
+                DEFAULT: "hsl(var(--accent))",
+                foreground: "hsl(var(--accent-foreground))",
+              },
+              card: {
+                DEFAULT: "hsl(var(--card))",
+                foreground: "hsl(var(--card-foreground))",
+              },
+              success: {
+                DEFAULT: "hsl(var(--success))",
+                foreground: "hsl(var(--success-foreground))",
+              },
+            },
+            borderRadius: {
+              lg: "var(--radius)",
+              md: "calc(var(--radius) - 2px)",
+              sm: "calc(var(--radius) - 4px)",
+            },
+            boxShadow: {
+              soft: "0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)",
+            },
+            animation: {
+              "fade-in": "fadeIn 0.3s ease-in-out",
+              "slide-up": "slideUp 0.3s ease-out",
+            },
+            keyframes: {
+              fadeIn: {
+                "0%": { opacity: "0" },
+                "100%": { opacity: "1" },
+              },
+              slideUp: {
+                "0%": { transform: "translateY(10px)", opacity: "0" },
+                "100%": { transform: "translateY(0)", opacity: "1" },
+              },
+            },
+          },
+        },
+      };
+    </script>
+    <!-- Shadcn UI-inspired CSS variables -->
+    <style>
+      :root {
+        --background: 210 40% 98%;
+        --foreground: 222.2 84% 4.9%;
+        --card: 0 0% 100%;
+        --card-foreground: 222.2 84% 4.9%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 222.2 84% 4.9%;
+        --primary: 221.2 83% 53.3%;
+        --primary-foreground: 210 40% 98%;
+        --secondary: 210 40% 96.1%;
+        --secondary-foreground: 222.2 47.4% 11.2%;
+        --muted: 210 40% 96.1%;
+        --muted-foreground: 215.4 16.3% 46.9%;
+        --accent: 210 40% 96.1%;
+        --accent-foreground: 222.2 47.4% 11.2%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 210 40% 98%;
+        --success: 142.1 76.2% 36.3%;
+        --success-foreground: 355.7 100% 97.3%;
+        --border: 214.3 31.8% 91.4%;
+        --input: 214.3 31.8% 91.4%;
+        --ring: 221.2 83% 53.3%;
+        --radius: 0.5rem;
+      }
+
+      .dark {
+        --background: 224 71% 4%;
+        --foreground: 213 31% 91%;
+        --card: 224 71% 4%;
+        --card-foreground: 213 31% 91%;
+        --popover: 224 71% 4%;
+        --popover-foreground: 213 31% 91%;
+        --primary: 210 100% 66%;
+        --primary-foreground: 222 47% 11%;
+        --secondary: 222 47% 11%;
+        --secondary-foreground: 213 31% 91%;
+        --muted: 223 47% 11%;
+        --muted-foreground: 215.4 16.3% 70%;
+        --accent: 216 34% 17%;
+        --accent-foreground: 210 40% 98%;
+        --destructive: 0 63% 31%;
+        --destructive-foreground: 210 40% 98%;
+        --success: 142 70% 45%;
+        --success-foreground: 144.9 80.4% 10%;
+        --border: 216 34% 17%;
+        --input: 216 34% 17%;
+        --ring: 224 76% 48%;
+      }
+
+      /* Dark mode specific styles */
+      .dark .bg-card {
+        background-color: hsl(224 71% 7%);
+      }
+
+      .dark .border {
+        border-color: hsl(215 27% 16%);
+      }
+
+      .dark .bg-muted {
+        background-color: hsl(223 47% 8%);
+      }
+
+      .dark .bg-muted\/50 {
+        background-color: hsl(223 47% 8% / 0.5);
+      }
+
+      .dark .hover\:bg-accent:hover {
+        background-color: hsl(215 25% 27% / 0.8);
+      }
+
+      .dark .hover\:bg-muted\/50:hover {
+        background-color: hsl(223 47% 11% / 0.5);
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: hsl(var(--background));
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: hsl(var(--muted-foreground) / 0.3);
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: hsl(var(--muted-foreground) / 0.5);
+      }
+
+      /* Dark mode scrollbar */
+      .dark ::-webkit-scrollbar-track {
+        background: hsl(224 71% 5%);
+      }
+
+      .dark ::-webkit-scrollbar-thumb {
+        background: hsl(215 25% 27% / 0.6);
+        border-radius: 4px;
+      }
+
+      .dark ::-webkit-scrollbar-thumb:hover {
+        background: hsl(215 25% 27% / 0.8);
+      }
+
+      /* Toast notification */
+      .toast {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        z-index: 100;
+        animation: slideIn 0.3s ease-out forwards;
+      }
+
+      @keyframes slideIn {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+
+      /* Additional dark mode enhancements */
+      .dark .bg-primary {
+        background-color: hsl(210 100% 66%);
+      }
+
+      .dark .hover\:bg-primary\/90:hover {
+        background-color: hsl(210 100% 60%);
+      }
+
+      .dark .bg-primary\/10 {
+        background-color: hsl(210 100% 66% / 0.1);
+      }
+
+      .dark .text-primary {
+        color: hsl(210 100% 66%);
+      }
+
+      .dark .hover\:bg-primary\/20:hover {
+        background-color: hsl(210 100% 66% / 0.2);
+      }
+
+      .dark .shadow-soft {
+        box-shadow:
+          0 2px 15px -3px rgba(0, 0, 0, 0.3),
+          0 10px 20px -2px rgba(0, 0, 0, 0.2);
+      }
+
+      /* Improve contrast for form elements in dark mode */
+      .dark input,
+      .dark select,
+      .dark textarea {
+        background-color: hsl(224 71% 7%);
+        border-color: hsl(215 27% 16%);
+      }
+
+      .dark input:focus,
+      .dark select:focus,
+      .dark textarea:focus {
+        border-color: hsl(210 100% 66% / 0.5);
+        box-shadow: 0 0 0 2px hsl(210 100% 66% / 0.25);
+      }
+
+      /* Improve header and footer in dark mode */
+      .dark header,
+      .dark footer {
+        background-color: hsl(224 71% 5% / 0.8);
+        border-color: hsl(215 27% 16%);
+      }
+    </style>
+    <!-- Dialog/Modal and Theme functionality -->
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        // Theme toggle functionality
+        const themeToggle = document.getElementById("theme-toggle");
+
+        // Check for user preference in localStorage
+        const userTheme = localStorage.getItem("theme");
+        if (userTheme === "dark") {
+          document.documentElement.classList.add("dark");
+        }
+
+        // Toggle theme when button is clicked
+        themeToggle.addEventListener("click", () => {
+          const isDark = document.documentElement.classList.toggle("dark");
+          localStorage.setItem("theme", isDark ? "dark" : "light");
+        });
+
+        // Handle dialog opening
+        document.querySelectorAll("[data-dialog-open]").forEach((button) => {
+          button.addEventListener("click", () => {
+            const dialogId = button.getAttribute("data-dialog-open");
+            const dialog = document.getElementById(dialogId);
+            if (dialog) {
+              dialog.classList.remove("hidden");
+              document.body.classList.add("overflow-hidden");
+
+              // Dispatch a custom event when dialog opens
+              const openEvent = new CustomEvent("dialog:opened", {
+                detail: { dialogId },
+              });
+              document.dispatchEvent(openEvent);
+
+              // Find the first input in the dialog and focus it
+              const firstInput = dialog.querySelector(
+                'input:not([type="hidden"])'
+              );
+              if (firstInput) {
+                setTimeout(() => firstInput.focus(), 100);
+              }
+            }
+          });
+        });
+
+        // Handle dialog closing
+        document.querySelectorAll("[data-dialog-close]").forEach((button) => {
+          button.addEventListener("click", () => {
+            const dialog = button.closest('[role="dialog"]');
+            if (dialog) {
+              dialog.classList.add("hidden");
+              document.body.classList.remove("overflow-hidden");
+
+              // Dispatch a custom event when dialog closes
+              const closeEvent = new CustomEvent("dialog:closed", {
+                detail: { dialogId: dialog.id },
+              });
+              document.dispatchEvent(closeEvent);
+            }
+          });
+        });
+
+        // Close dialog when clicking outside
+        document.querySelectorAll('[role="dialog"]').forEach((dialog) => {
+          dialog.addEventListener("click", (e) => {
+            if (e.target === dialog) {
+              dialog.classList.add("hidden");
+              document.body.classList.remove("overflow-hidden");
+            }
+          });
+        });
+
+        // Close dialog when pressing Escape
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") {
+            const openDialog = document.querySelector(
+              '[role="dialog"]:not(.hidden)'
+            );
+            if (openDialog) {
+              openDialog.classList.add("hidden");
+              document.body.classList.remove("overflow-hidden");
+            }
+          }
+        });
+
+        // Handle tabs in dialogs
+        document
+          .querySelectorAll('[role="dialog"] [data-tab-button]')
+          .forEach((button) => {
+            button.addEventListener("click", () => {
+              const tabGroup = button.closest("[data-tab-group]");
+              const tabId = button.getAttribute("data-tab-button");
+
+              // Deactivate all tabs in this group
+              tabGroup.querySelectorAll("[data-tab-button]").forEach((btn) => {
+                btn.setAttribute("aria-selected", "false");
+                btn.classList.remove("border-primary", "text-primary");
+                btn.classList.add(
+                  "border-transparent",
+                  "text-muted-foreground"
+                );
+              });
+
+              // Activate this tab
+              button.setAttribute("aria-selected", "true");
+              button.classList.remove(
+                "border-transparent",
+                "text-muted-foreground"
+              );
+              button.classList.add("border-primary", "text-primary");
+
+              // Hide all tab panels
+              tabGroup.querySelectorAll("[data-tab-panel]").forEach((panel) => {
+                panel.classList.add("hidden");
+              });
+
+              // Show the selected panel
+              const panel = tabGroup.querySelector(
+                `[data-tab-panel="${tabId}"]`
+              );
+              if (panel) panel.classList.remove("hidden");
+            });
+          });
+      });
+    </script>
   </head>
-  <body>
-    <div class="container mt-4">{% block content %}{% endblock %}</div>
+  <body class="min-h-screen bg-background text-foreground">
+    <div class="flex min-h-screen flex-col">
+      <!-- Header -->
+      <header class="sticky top-0 z-40 border-b bg-card/80 backdrop-blur-sm">
+        <div
+          class="container flex h-16 items-center px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto"
+        >
+          <div class="flex items-center space-x-2">
+            <i class="fas fa-home text-primary text-xl"></i>
+            <span class="font-bold text-lg">BigBearCasaOS</span>
+          </div>
+          <div class="ml-auto flex items-center space-x-4">
+            <button
+              id="theme-toggle"
+              class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+            >
+              <i class="fas fa-moon mr-2 dark:hidden"></i>
+              <i class="fas fa-sun mr-2 hidden dark:inline"></i>
+              <span class="dark:hidden">Dark</span>
+              <span class="hidden dark:inline">Light</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main content -->
+      <main class="flex-1">
+        <div class="container px-4 py-6 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+          {% block content %}{% endblock %}
+        </div>
+      </main>
+
+      <!-- Footer -->
+      <footer class="border-t py-4 bg-card/80">
+        <div
+          class="container flex flex-col sm:flex-row items-center justify-between gap-4 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto"
+        >
+          <p class="text-sm text-muted-foreground">
+            &copy;
+            <script>
+              document.write(new Date().getFullYear());
+            </script>
+            BigBearTechWorld. All rights reserved.
+          </p>
+          <div class="flex items-center space-x-4">
+            <a
+              href="https://github.com/bigbeartechworld"
+              class="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <i class="fab fa-github mr-1"></i> GitHub
+            </a>
+            <a
+              href="https://community.bigbeartechworld.com"
+              class="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <i class="fas fa-users mr-1"></i> Community
+            </a>
+          </div>
+        </div>
+      </footer>
+    </div>
   </body>
 </html>

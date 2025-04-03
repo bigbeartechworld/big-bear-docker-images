@@ -1,128 +1,865 @@
 {% extends "base.html" %} {% block content %}
-<h2>BigBearCasaOS User Management</h2>
+<div class="animate-fade-in">
+  <!-- Page header -->
+  <div
+    class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+  >
+    <div>
+      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
+        User Management
+      </h1>
+      <p class="text-muted-foreground mt-1 text-sm sm:text-base">
+        Manage your CasaOS user accounts
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button
+        type="button"
+        class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 shadow-sm w-full sm:w-auto"
+        data-dialog-open="addUserDialog"
+      >
+        <i class="fas fa-plus mr-2"></i>
+        Add User
+      </button>
+    </div>
+  </div>
 
-<!-- User List -->
-<div class="card mb-4">
-  <div class="card-header">Users</div>
-  <div class="card-body">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Username</th>
-          <th>Role</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for user in users %}
-        <tr>
-          <td>{{ user[0] }}</td>
-          <td>{{ user[1] }}</td>
-          <td>{{ user[2] }}</td>
-          <td>
-            <button
-              type="button"
-              class="btn btn-sm btn-warning"
-              data-bs-toggle="modal"
-              data-bs-target="#editModal{{user[0]}}"
-            >
-              Edit
-            </button>
-            <form
-              action="{{ url_for('remove_user_route') }}"
-              method="POST"
-              style="display: inline"
-            >
-              <input type="hidden" name="user_id" value="{{ user[0] }}" />
-              <button
-                type="submit"
-                class="btn btn-sm btn-danger"
-                onclick="return confirm('Are you sure?')"
-              >
-                Remove
-              </button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-
-    <!-- Add this after the table -->
-    {% for user in users %}
-    <div class="modal fade" id="editModal{{user[0]}}" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Edit User: {{user[1]}}</h5>
-            <button
-              type="button"
-              class="btn-close"
-              data-bs-dismiss="modal"
-            ></button>
+  <!-- User List -->
+  <div
+    class="rounded-lg border bg-card text-card-foreground shadow-soft overflow-hidden animate-slide-up mt-8"
+  >
+    <div class="flex flex-col space-y-1.5 p-4 sm:p-6">
+      <div
+        class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+      >
+        <div>
+          <h3
+            class="text-xl sm:text-2xl font-semibold leading-none tracking-tight"
+          >
+            Users
+          </h3>
+          <p class="text-sm text-muted-foreground mt-1">
+            Manage your CasaOS users and their permissions
+          </p>
+        </div>
+        <div class="flex items-center w-full sm:w-auto">
+          <div class="relative w-full sm:w-auto">
+            <i
+              class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            ></i>
+            <input
+              type="text"
+              id="userSearchInput"
+              placeholder="Search users..."
+              class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pl-9 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-w-[200px]"
+            />
           </div>
-          <form action="{{ url_for('edit_password_route') }}" method="POST">
-            <div class="modal-body">
-              <input type="hidden" name="user_id" value="{{user[0]}}" />
-              <div class="mb-3">
-                <label>New Password</label>
-                <input
-                  type="password"
-                  name="new_password"
-                  class="form-control"
-                  required
-                />
+        </div>
+      </div>
+    </div>
+    <div class="p-0">
+      <div class="relative w-full overflow-auto">
+        <!-- Mobile view (card layout) -->
+        <div class="block sm:hidden">
+          {% for user in users %}
+          <div
+            class="border-b p-4 user-row"
+            data-username="{{ user[1] }}"
+            data-role="{{ user[2] }}"
+            data-id="{{ user[0] }}"
+          >
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <div
+                  class="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary"
+                >
+                  <i class="fas fa-user text-xs"></i>
+                </div>
+                <div>
+                  <div class="font-medium">{{ user[1] }}</div>
+                  <div class="text-xs text-muted-foreground">
+                    ID: {{ user[0] }}
+                  </div>
+                </div>
               </div>
+              <span
+                class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-primary/10 text-primary hover:bg-primary/20"
+              >
+                {{ user[2] }}
+              </span>
             </div>
-            <div class="modal-footer">
+            <div class="flex justify-end gap-2 mt-3">
               <button
                 type="button"
-                class="btn btn-secondary"
-                data-bs-dismiss="modal"
+                class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 w-9 p-0"
+                data-dialog-open="editDialog{{user[0]}}"
+                title="Edit User"
               >
-                Close
+                <i class="fas fa-pen-to-square"></i>
+                <span class="sr-only">Edit</span>
               </button>
-              <button type="submit" class="btn btn-primary">
-                Save changes
+              <form
+                action="{{ url_for('remove_user_route') }}"
+                method="POST"
+                class="inline-block"
+              >
+                <input type="hidden" name="user_id" value="{{ user[0] }}" />
+                <button
+                  type="submit"
+                  class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 w-9 p-0 hover:text-destructive hover:border-destructive"
+                  onclick="return confirm('Are you sure you want to remove this user?')"
+                  title="Remove User"
+                >
+                  <i class="fas fa-trash-alt"></i>
+                  <span class="sr-only">Remove</span>
+                </button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Desktop view (table layout) -->
+        <table class="w-full caption-bottom text-sm hidden sm:table">
+          <thead>
+            <tr class="border-b bg-muted/50">
+              <th
+                class="h-12 px-4 sm:px-6 text-left align-middle font-medium text-muted-foreground"
+              >
+                ID
+              </th>
+              <th
+                class="h-12 px-4 sm:px-6 text-left align-middle font-medium text-muted-foreground"
+              >
+                Username
+              </th>
+              <th
+                class="h-12 px-4 sm:px-6 text-left align-middle font-medium text-muted-foreground"
+              >
+                Role
+              </th>
+              <th
+                class="h-12 px-4 sm:px-6 text-right align-middle font-medium text-muted-foreground"
+              >
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for user in users %}
+            <tr
+              class="border-b transition-colors hover:bg-muted/50 user-row"
+              data-username="{{ user[1] }}"
+              data-role="{{ user[2] }}"
+              data-id="{{ user[0] }}"
+            >
+              <td class="p-4 px-4 sm:px-6 align-middle font-medium">
+                {{ user[0] }}
+              </td>
+              <td class="p-4 px-4 sm:px-6 align-middle">
+                <div class="flex items-center gap-2">
+                  <div
+                    class="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary"
+                  >
+                    <i class="fas fa-user text-xs"></i>
+                  </div>
+                  <span>{{ user[1] }}</span>
+                </div>
+              </td>
+              <td class="p-4 px-4 sm:px-6 align-middle">
+                <span
+                  class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-primary/10 text-primary hover:bg-primary/20"
+                >
+                  {{ user[2] }}
+                </span>
+              </td>
+              <td class="p-4 px-4 sm:px-6 align-middle">
+                <div class="flex gap-2 justify-end">
+                  <button
+                    type="button"
+                    class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 w-9 p-0"
+                    data-dialog-open="editDialog{{user[0]}}"
+                    title="Edit User"
+                  >
+                    <i class="fas fa-pen-to-square"></i>
+                    <span class="sr-only">Edit</span>
+                  </button>
+                  <form
+                    action="{{ url_for('remove_user_route') }}"
+                    method="POST"
+                    class="inline-block"
+                  >
+                    <input type="hidden" name="user_id" value="{{ user[0] }}" />
+                    <button
+                      type="submit"
+                      class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 w-9 p-0 hover:text-destructive hover:border-destructive"
+                      onclick="return confirm('Are you sure you want to remove this user?')"
+                      title="Remove User"
+                    >
+                      <i class="fas fa-trash-alt"></i>
+                      <span class="sr-only">Remove</span>
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit User Dialogs -->
+  {% for user in users %}
+  <div
+    id="editDialog{{user[0]}}"
+    role="dialog"
+    aria-modal="true"
+    class="fixed inset-0 z-50 hidden bg-background/80 backdrop-blur-sm"
+  >
+    <div
+      class="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg animate-fade-in"
+    >
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-semibold leading-none tracking-tight">
+            Edit User
+          </h2>
+          <p class="text-sm text-muted-foreground mt-1">
+            Update password for {{user[1]}}
+          </p>
+        </div>
+        <button
+          type="button"
+          data-dialog-close
+          class="inline-flex items-center justify-center rounded-full h-8 w-8 border border-input hover:bg-accent hover:text-accent-foreground"
+        >
+          <i class="fas fa-times"></i>
+          <span class="sr-only">Close</span>
+        </button>
+      </div>
+      <form
+        action="{{ url_for('edit_password_route') }}"
+        method="POST"
+        class="space-y-4 pt-2"
+      >
+        <input type="hidden" name="user_id" value="{{user[0]}}" />
+        <div class="grid gap-2">
+          <div class="flex items-center justify-between">
+            <label
+              for="new_password_{{user[0]}}"
+              class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >New Password</label
+            >
+            <span class="text-xs text-muted-foreground">Required</span>
+          </div>
+          <div class="relative">
+            <input
+              type="password"
+              id="new_password_{{user[0]}}"
+              name="new_password"
+              class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pr-10"
+              required
+              placeholder="Enter new password"
+            />
+            <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+              <i class="fas fa-lock text-muted-foreground"></i>
+            </div>
+          </div>
+          <p class="text-xs text-muted-foreground">
+            Password should be secure and not easily guessable
+          </p>
+        </div>
+        <div class="border-t pt-4 mt-4">
+          <div
+            class="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2"
+          >
+            <button
+              type="button"
+              data-dialog-close
+              class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 mt-2 sm:mt-0"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+            >
+              <i class="fas fa-save mr-2"></i>
+              Save changes
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+
+  <!-- Add User Dialog -->
+  <div
+    id="addUserDialog"
+    role="dialog"
+    aria-modal="true"
+    class="fixed inset-0 z-50 hidden bg-background/80 backdrop-blur-sm"
+  >
+    <div
+      class="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg animate-fade-in"
+    >
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-semibold leading-none tracking-tight">
+            Add New User
+          </h2>
+          <p class="text-sm text-muted-foreground mt-1">
+            Create a new CasaOS user account
+          </p>
+        </div>
+        <button
+          type="button"
+          id="addUserDialogClose"
+          class="inline-flex items-center justify-center rounded-full h-8 w-8 border border-input hover:bg-accent hover:text-accent-foreground"
+        >
+          <i class="fas fa-times"></i>
+          <span class="sr-only">Close</span>
+        </button>
+      </div>
+      <form
+        id="addUserForm"
+        method="POST"
+        action="{{ url_for('add_user_route') }}"
+        class="space-y-4 pt-2"
+        onsubmit="window.hasUnsavedChanges = false;"
+      >
+        <div class="grid gap-4">
+          <div class="grid gap-2">
+            <div class="flex items-center justify-between">
+              <label
+                for="username"
+                class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >Username</label
+              >
+              <span class="text-xs text-muted-foreground">Required</span>
+            </div>
+            <div class="relative">
+              <input
+                type="text"
+                id="username"
+                name="username"
+                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pl-10"
+                required
+                placeholder="Enter username"
+                oninput="window.hasUnsavedChanges = true;"
+              />
+              <div class="absolute inset-y-0 left-0 flex items-center pl-3">
+                <i class="fas fa-user text-muted-foreground"></i>
+              </div>
+            </div>
+          </div>
+          <div class="grid gap-2">
+            <div class="flex items-center justify-between">
+              <label
+                for="password"
+                class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >Password</label
+              >
+              <span class="text-xs text-muted-foreground">Required</span>
+            </div>
+            <div class="relative">
+              <input
+                type="password"
+                id="password"
+                name="password"
+                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pl-10"
+                required
+                placeholder="Enter password"
+                oninput="window.hasUnsavedChanges = true;"
+              />
+              <div class="absolute inset-y-0 left-0 flex items-center pl-3">
+                <i class="fas fa-lock text-muted-foreground"></i>
+              </div>
+            </div>
+            <p class="text-xs text-muted-foreground">
+              Password should be secure and not easily guessable
+            </p>
+          </div>
+        </div>
+        <div class="border-t pt-4 mt-4">
+          <div
+            class="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2"
+          >
+            <button
+              type="button"
+              id="addUserFormCancel"
+              class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 mt-2 sm:mt-0"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+            >
+              <i class="fas fa-user-plus mr-2"></i>
+              Add User
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Database Management -->
+  <div
+    class="rounded-lg border bg-card text-card-foreground shadow-soft overflow-hidden animate-slide-up mt-8"
+  >
+    <div class="flex flex-col space-y-1.5 p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-2xl font-semibold leading-none tracking-tight">
+            Database Management
+          </h3>
+          <p class="text-sm text-muted-foreground mt-1">
+            Manage your CasaOS database
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="p-6 pt-4 border-t">
+      <div class="bg-muted/50 rounded-lg p-4">
+        <div class="flex items-start space-x-4">
+          <div class="bg-destructive/10 text-destructive p-2 rounded-full">
+            <i class="fas fa-exclamation-triangle"></i>
+          </div>
+          <div class="space-y-2">
+            <h4 class="font-medium">Warning: Destructive Action</h4>
+            <p class="text-sm text-muted-foreground">
+              Resetting the database will permanently delete all users and their
+              data. This action cannot be undone.
+            </p>
+            <div class="mt-4">
+              <button
+                type="button"
+                class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2"
+                data-dialog-open="resetDatabaseDialog"
+              >
+                <i class="fas fa-trash-alt mr-2"></i>
+                Reset Database
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reset Database Dialog -->
+  <div
+    id="resetDatabaseDialog"
+    role="dialog"
+    aria-modal="true"
+    class="fixed inset-0 z-50 hidden bg-background/80 backdrop-blur-sm"
+  >
+    <div
+      class="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg animate-fade-in"
+    >
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2 text-destructive">
+          <i class="fas fa-exclamation-triangle"></i>
+          <h2 class="text-xl font-semibold leading-none tracking-tight">
+            Confirm Database Reset
+          </h2>
+        </div>
+        <button
+          type="button"
+          data-dialog-close
+          class="inline-flex items-center justify-center rounded-full h-8 w-8 border border-input hover:bg-accent hover:text-accent-foreground"
+        >
+          <i class="fas fa-times"></i>
+          <span class="sr-only">Close</span>
+        </button>
+      </div>
+      <div class="py-4">
+        <div class="bg-destructive/10 text-destructive p-4 rounded-md mb-4">
+          <p class="font-medium">Warning: This action cannot be undone!</p>
+          <p class="text-sm mt-1">
+            Resetting the database will permanently delete all users and their
+            data.
+          </p>
+        </div>
+        <p class="text-sm text-muted-foreground">
+          Please type <strong>RESET</strong> below to confirm:
+        </p>
+        <input
+          type="text"
+          id="reset-confirmation"
+          class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-2"
+          placeholder="Type RESET to confirm"
+        />
+      </div>
+      <div class="border-t pt-4 mt-2">
+        <div
+          class="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2"
+        >
+          <button
+            type="button"
+            data-dialog-close
+            class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 mt-2 sm:mt-0"
+          >
+            Cancel
+          </button>
+          <form
+            action="{{ url_for('reset_database_route') }}"
+            method="POST"
+            id="reset-database-form"
+          >
+            <button
+              type="submit"
+              id="confirm-reset-button"
+              class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2 opacity-50 cursor-not-allowed"
+              disabled
+            >
+              <i class="fas fa-trash-alt mr-2"></i>
+              Reset Database
+            </button>
           </form>
         </div>
       </div>
     </div>
-    {% endfor %}
   </div>
 </div>
 
-<!-- Add User Form -->
-<div class="card">
-  <div class="card-header">Add New User</div>
-  <div class="card-body">
-    <form method="POST" action="{{ url_for('add_user_route') }}">
-      <div class="mb-3">
-        <label>Username</label>
-        <input type="text" name="username" class="form-control" required />
+<!-- Unsaved Changes Warning Dialog -->
+<div
+  id="unsavedChangesDialog"
+  role="dialog"
+  aria-modal="true"
+  class="fixed inset-0 z-[60] hidden bg-background/80 backdrop-blur-sm"
+>
+  <div
+    class="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg animate-fade-in"
+  >
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2 text-amber-500">
+        <i class="fas fa-exclamation-triangle"></i>
+        <h2 class="text-xl font-semibold leading-none tracking-tight">
+          Unsaved Changes
+        </h2>
       </div>
-      <div class="mb-3">
-        <label>Password</label>
-        <input type="password" name="password" class="form-control" required />
+      <button
+        type="button"
+        id="closeUnsavedChangesDialog"
+        class="inline-flex items-center justify-center rounded-full h-8 w-8 border border-input hover:bg-accent hover:text-accent-foreground"
+      >
+        <i class="fas fa-times"></i>
+        <span class="sr-only">Close</span>
+      </button>
+    </div>
+    <div class="py-4">
+      <p>
+        You have unsaved changes. Are you sure you want to leave without saving?
+      </p>
+    </div>
+    <div class="border-t pt-4 mt-2">
+      <div
+        class="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2"
+      >
+        <button
+          type="button"
+          id="stayOnForm"
+          class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 mt-2 sm:mt-0"
+        >
+          Stay
+        </button>
+        <button
+          type="button"
+          id="leaveForm"
+          class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2"
+        >
+          Leave
+        </button>
       </div>
-      <button type="submit" class="btn btn-primary">Add User</button>
-    </form>
+    </div>
   </div>
 </div>
 
-<div class="card mt-4">
-  <div class="card-header">Database Management</div>
-  <div class="card-body">
-    <form
-      action="{{ url_for('reset_database_route') }}"
-      method="POST"
-      onsubmit="return confirm('WARNING: This will delete all users! Are you sure?');"
-    >
-      <button type="submit" class="btn btn-danger">Reset Database</button>
-    </form>
-  </div>
-</div>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Reset Database Dialog functionality
+    const resetConfirmationInput =
+      document.getElementById("reset-confirmation");
+    const confirmResetButton = document.getElementById("confirm-reset-button");
+
+    if (resetConfirmationInput && confirmResetButton) {
+      resetConfirmationInput.addEventListener("input", function () {
+        if (this.value === "RESET") {
+          confirmResetButton.disabled = false;
+          confirmResetButton.classList.remove(
+            "opacity-50",
+            "cursor-not-allowed"
+          );
+        } else {
+          confirmResetButton.disabled = true;
+          confirmResetButton.classList.add("opacity-50", "cursor-not-allowed");
+        }
+      });
+    }
+
+    // Add User Form unsaved changes warning
+    const addUserForm = document.getElementById("addUserForm");
+    const addUserDialogClose = document.getElementById("addUserDialogClose");
+    const addUserFormCancel = document.getElementById("addUserFormCancel");
+    const unsavedChangesDialog = document.getElementById(
+      "unsavedChangesDialog"
+    );
+    const closeUnsavedChangesDialog = document.getElementById(
+      "closeUnsavedChangesDialog"
+    );
+    const stayOnForm = document.getElementById("stayOnForm");
+    const leaveForm = document.getElementById("leaveForm");
+    const addUserDialog = document.getElementById("addUserDialog");
+
+    let formChanged = false;
+    let closeAction = null;
+    let isDialogOpen = false;
+
+    // Function to check if the add user dialog is open
+    function isAddUserDialogOpen() {
+      return addUserDialog && !addUserDialog.classList.contains("hidden");
+    }
+
+    // Track form changes
+    if (addUserForm) {
+      const formInputs = addUserForm.querySelectorAll(
+        "input, select, textarea"
+      );
+      formInputs.forEach((input) => {
+        input.addEventListener("input", () => {
+          formChanged = true;
+        });
+      });
+
+      // Reset form changed state when form is submitted
+      addUserForm.addEventListener("submit", () => {
+        formChanged = false;
+      });
+    }
+
+    // Handle page navigation/refresh events - using a separate script tag for better browser compatibility
+    window.addEventListener("load", function () {
+      // Set a global variable to track form changes that can be accessed by the beforeunload handler
+      window.hasUnsavedChanges = false;
+
+      // Update the global variable when form changes
+      if (addUserForm) {
+        const formInputs = addUserForm.querySelectorAll(
+          "input, select, textarea"
+        );
+        formInputs.forEach((input) => {
+          input.addEventListener("input", () => {
+            window.hasUnsavedChanges = true;
+          });
+        });
+
+        // Reset when form is submitted
+        addUserForm.addEventListener("submit", () => {
+          window.hasUnsavedChanges = false;
+        });
+      }
+
+      // Listen for dialog events to update the global variable
+      document.addEventListener("dialog:opened", function (e) {
+        if (e.detail.dialogId === "addUserDialog") {
+          window.hasUnsavedChanges = false;
+        }
+      });
+
+      document.addEventListener("dialog:closed", function (e) {
+        if (e.detail.dialogId === "addUserDialog") {
+          window.hasUnsavedChanges = false;
+        }
+      });
+    });
+
+    // This needs to be at the global level for maximum browser compatibility
+    window.addEventListener("beforeunload", function (e) {
+      if (window.hasUnsavedChanges) {
+        // Standard way to show a confirmation dialog before leaving
+        const confirmationMessage =
+          "You have unsaved changes. Are you sure you want to leave?";
+        e.preventDefault(); // This works in most modern browsers
+        e.returnValue = confirmationMessage; // For older browsers
+        return confirmationMessage; // For very old browsers
+      }
+    });
+
+    // Listen for dialog events
+    document.addEventListener("dialog:opened", function (e) {
+      if (e.detail.dialogId === "addUserDialog") {
+        formChanged = false; // Reset form changed state when dialog opens
+      }
+    });
+
+    // Handle close button click
+    if (addUserDialogClose) {
+      addUserDialogClose.addEventListener("click", (e) => {
+        if (formChanged) {
+          e.preventDefault();
+          unsavedChangesDialog.classList.remove("hidden");
+          closeAction = "close";
+        } else {
+          const addUserDialog = document.getElementById("addUserDialog");
+          addUserDialog.classList.add("hidden");
+          document.body.classList.remove("overflow-hidden");
+          window.hasUnsavedChanges = false;
+
+          // Dispatch dialog closed event
+          const closeEvent = new CustomEvent("dialog:closed", {
+            detail: { dialogId: "addUserDialog" },
+          });
+          document.dispatchEvent(closeEvent);
+        }
+      });
+    }
+
+    // Handle cancel button click
+    if (addUserFormCancel) {
+      addUserFormCancel.addEventListener("click", (e) => {
+        if (formChanged) {
+          e.preventDefault();
+          unsavedChangesDialog.classList.remove("hidden");
+          closeAction = "cancel";
+        } else {
+          const addUserDialog = document.getElementById("addUserDialog");
+          addUserDialog.classList.add("hidden");
+          document.body.classList.remove("overflow-hidden");
+          window.hasUnsavedChanges = false;
+
+          // Dispatch dialog closed event
+          const closeEvent = new CustomEvent("dialog:closed", {
+            detail: { dialogId: "addUserDialog" },
+          });
+          document.dispatchEvent(closeEvent);
+        }
+      });
+    }
+
+    // Handle unsaved changes dialog actions
+    if (closeUnsavedChangesDialog) {
+      closeUnsavedChangesDialog.addEventListener("click", () => {
+        unsavedChangesDialog.classList.add("hidden");
+      });
+    }
+
+    if (stayOnForm) {
+      stayOnForm.addEventListener("click", () => {
+        unsavedChangesDialog.classList.add("hidden");
+      });
+    }
+
+    if (leaveForm) {
+      leaveForm.addEventListener("click", () => {
+        unsavedChangesDialog.classList.add("hidden");
+        const addUserDialog = document.getElementById("addUserDialog");
+        addUserDialog.classList.add("hidden");
+        document.body.classList.remove("overflow-hidden");
+        formChanged = false;
+        window.hasUnsavedChanges = false;
+
+        // Dispatch dialog closed event
+        const closeEvent = new CustomEvent("dialog:closed", {
+          detail: { dialogId: "addUserDialog" },
+        });
+        document.dispatchEvent(closeEvent);
+      });
+    }
+  });
+  // User search functionality
+  const userSearchInput = document.getElementById("userSearchInput");
+  if (userSearchInput) {
+    userSearchInput.addEventListener("input", function () {
+      const searchTerm = this.value.toLowerCase().trim();
+      const userRows = document.querySelectorAll(".user-row");
+
+      userRows.forEach((row) => {
+        const username = row.getAttribute("data-username").toLowerCase();
+        const role = row.getAttribute("data-role").toLowerCase();
+        const id = row.getAttribute("data-id").toLowerCase();
+
+        // Check if any of the user data contains the search term
+        const matchesSearch =
+          username.includes(searchTerm) ||
+          role.includes(searchTerm) ||
+          id.includes(searchTerm);
+
+        // Show or hide the row based on the search
+        if (matchesSearch) {
+          row.style.display = "";
+        } else {
+          row.style.display = "none";
+        }
+      });
+
+      // Show a message if no results found
+      const mobileResults = document.querySelector(
+        '.block.sm\\:hidden .user-row:not([style*="display: none"])'
+      );
+      const desktopResults = document.querySelector(
+        '.hidden.sm\\:table .user-row:not([style*="display: none"])'
+      );
+
+      // Get the no results message elements or create them if they don't exist
+      let mobileNoResults = document.getElementById("mobile-no-results");
+      let desktopNoResults = document.getElementById("desktop-no-results");
+
+      if (!mobileNoResults) {
+        mobileNoResults = document.createElement("div");
+        mobileNoResults.id = "mobile-no-results";
+        mobileNoResults.className = "p-4 text-center text-muted-foreground";
+        mobileNoResults.textContent = "No users found";
+        document
+          .querySelector(".block.sm\\:hidden")
+          .appendChild(mobileNoResults);
+      }
+
+      if (!desktopNoResults) {
+        desktopNoResults = document.createElement("tr");
+        desktopNoResults.id = "desktop-no-results";
+        const td = document.createElement("td");
+        td.colSpan = 4;
+        td.className = "p-4 text-center text-muted-foreground";
+        td.textContent = "No users found";
+        desktopNoResults.appendChild(td);
+        document
+          .querySelector(".hidden.sm\\:table tbody")
+          .appendChild(desktopNoResults);
+      }
+
+      // Show or hide the no results message
+      mobileNoResults.style.display =
+        !mobileResults && searchTerm ? "block" : "none";
+      desktopNoResults.style.display =
+        !desktopResults && searchTerm ? "table-row" : "none";
+    });
+
+    // Add clear button functionality
+    const clearButton = document.createElement("button");
+    clearButton.type = "button";
+    clearButton.className =
+      "absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground hidden";
+    clearButton.innerHTML = '<i class="fas fa-times"></i>';
+    clearButton.style.display = "none";
+    userSearchInput.parentNode.appendChild(clearButton);
+
+    userSearchInput.addEventListener("input", function () {
+      clearButton.style.display = this.value ? "block" : "none";
+    });
+
+    clearButton.addEventListener("click", function () {
+      userSearchInput.value = "";
+      userSearchInput.dispatchEvent(new Event("input"));
+      this.style.display = "none";
+      userSearchInput.focus();
+    });
+  }
+</script>
 {% endblock %}

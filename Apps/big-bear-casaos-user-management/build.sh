@@ -2,7 +2,7 @@
 
 # Set image name and tag
 IMAGE_NAME="bigbeartechworld/big-bear-casaos-user-management"
-TAG="0.0.1"
+TAG="0.1.0"
 
 # Check if docker is installed
 if ! command -v docker &> /dev/null; then
