@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: Dockerfile
     # A custom name for the container, making it easier to identify
-    container_name: big-bear-casaos-user-management
+    container_name: big-bear-casaos-user-management-dev
 
     ports:
       # Exposing port 5000 on the host and mapping it to port 5000 in the container
@@ -48,3 +48,6 @@ services:
     security_opt:
       # Disables the default seccomp security profile to allow unrestricted system calls
       - seccomp:unconfined
+      
+    # Command to run Flask in development mode with auto-reloading
+    command: python -m flask run --host=0.0.0.0 --port=5000 --reload
