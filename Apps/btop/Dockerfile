@@ -1,4 +1,4 @@
-FROM alpine:latest
+FROM alpine:3.21.3
 
 # Install required packages for building gotty and running btop
 RUN apk add --no-cache \
@@ -18,7 +18,16 @@ RUN git clone https://github.com/sorenisanerd/gotty.git /tmp/gotty && \
     rm -rf /tmp/gotty
 
 # Set the terminal to support UTF-8
-ENV LANG C.UTF-8
+ENV LANG=C.UTF-8
+
+# Set default authentication (can be overridden at runtime)
+# Note: These values should be overridden at runtime for security
+ARG GOTTY_AUTH_USER=bigbear
+ARG GOTTY_AUTH_PASS=password
+ARG GOTTY_AUTH_ENABLED=true
+ENV GOTTY_AUTH_USER=${GOTTY_AUTH_USER}
+ENV GOTTY_AUTH_PASS=${GOTTY_AUTH_PASS}
+ENV GOTTY_AUTH_ENABLED=${GOTTY_AUTH_ENABLED}
 
 # Create default config directory
 RUN mkdir -p /root/.config/btop.default
@@ -36,5 +45,5 @@ EXPOSE 7681
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+# Set entrypoint
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["gotty", "-p", "7681", "-w", "btop"]

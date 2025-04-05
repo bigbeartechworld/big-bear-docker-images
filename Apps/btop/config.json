@@ -1,7 +1,7 @@
 {
   "id": "btop",
   "name": "BTOP",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "image": "bigbeartechworld/big-bear-btop",
   "youtube": "https://www.youtube.com/playlist?list=PL2RAscIdkpt96nLpa72tqLIGl54gSmSAS",
   "docs_link": ""

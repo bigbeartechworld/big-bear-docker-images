@@ -3,25 +3,23 @@
 # Check if btop.conf exists in the mounted directory
 if [ ! -f /root/.config/btop/btop.conf ]; then
     # Copy default config if it doesn't exist
-    cp /root/.config/btop.default/btop.conf /root/.config/btop/btop.conf
-
-    # Copy default themes if they don't exist
-    cp -rn /usr/share/btop/themes/* /root/.config/btop/themes
+    mkdir -p /root/.config/btop
+    cp -rn /usr/share/btop/themes/* /root/.config/btop/themes 2>/dev/null || true
 fi
 
 # Set HOME to root to ensure the correct configuration path
 export HOME=/root
 
 # Check if authentication is enabled
-if [ "$GOTTY_AUTH_ENABLED" = "true" ]; then
+if [ "$TTYD_AUTH_ENABLED" = "true" ]; then
     # Replace the command with authentication
-    COMMAND="gotty -p 7681 -w -c ${GOTTY_AUTH_USER}:${GOTTY_AUTH_PASS} btop"
+    COMMAND="ttyd -p 7681 -W -c ${TTYD_AUTH_USER}:${TTYD_AUTH_PASS} btop"
     exec $COMMAND
 else
     # Execute the provided command without authentication
     if [ $# -eq 0 ]; then
         # No command provided, use default
-        exec gotty -p 7681 -w btop
+        exec ttyd -p 7681 -W btop
     else
         # Use provided command
         exec "$@"

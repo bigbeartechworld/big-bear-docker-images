@@ -6,6 +6,11 @@ services:
     build: .
     # Name the container 'big-bear-btop' for easier identification
     container_name: big-bear-btop
+    # Environment variables for authentication
+    environment:
+      - GOTTY_AUTH_USER=bigbear
+      - GOTTY_AUTH_PASS=password
+      - GOTTY_AUTH_ENABLED=true
     # Run the container in privileged mode to allow access to system metrics
     privileged: true
     # Mount necessary volumes for accessing system information
