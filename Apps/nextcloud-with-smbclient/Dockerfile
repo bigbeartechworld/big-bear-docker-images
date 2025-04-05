@@ -1,8 +1,8 @@
-FROM nextcloud:31.0.0-apache
+FROM nextcloud:31.0.2-apache
 
 RUN set -e; \
     apt-get update && \
-    apt-get install -y libsmbclient-dev build-essential autoconf && \
+    apt-get install -y libsmbclient-dev build-essential autoconf ffmpeg && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     pecl install smbclient && \
