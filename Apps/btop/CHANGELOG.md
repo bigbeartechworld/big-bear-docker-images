@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Environment variables for controlling authentication:
   - `GOTTY_AUTH_USER` / `TTYD_AUTH_USER`: Username for authentication (default: "bigbear")
   - `GOTTY_AUTH_PASS` / `TTYD_AUTH_PASS`: Password for authentication (default: "password")
-  - `GOTTY_AUTH_ENABLED` / `TTYD_AUTH_ENABLED`: Enable/disable authentication (default: "true")
+  - `GOTTY_AUTH_ENABLED` / `TTYD_AUTH_ENABLED`: Enable/disable authentication (default: "false")
 - Updated entrypoint scripts to handle authentication logic
 - Support for running with or without authentication via environment variables
 
