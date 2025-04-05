@@ -39,4 +39,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for both gotty and ttyd web terminal interfaces
 - Basic configuration for btop monitoring tool
 - Docker Compose files for easy deployment
-- CasaOS integration
