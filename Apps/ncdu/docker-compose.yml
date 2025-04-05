@@ -7,6 +7,12 @@ services:
     build: .
     # Name the container 'big-bear-ncdu' for easier identification
     container_name: big-bear-ncdu
+    # Environment variables for authentication
+    environment:
+      - NCDU_PATH=/
+      - GOTTY_AUTH_USER=bigbear
+      - GOTTY_AUTH_PASS=password
+      - GOTTY_AUTH_ENABLED=true
     # Run the container in privileged mode to allow access to system metrics
     privileged: true
     # Mount necessary volumes for accessing system information
@@ -19,9 +25,6 @@ services:
       - /dev:/dev
       # Mount the host's /etc/localtime file to the container's /etc/localtime file (read-only)
       - /etc/localtime:/etc/localtime:ro
-    # Set environment variables for the container
-    environment:
-      - NCDU_PATH=/
     # Map port 7681 on the host to port 7681 on the container
     ports:
       - "7681:7681"
