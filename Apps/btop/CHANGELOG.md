@@ -28,8 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - Added basic authentication to protect btop web interface
-- Implemented proper credential handling in entrypoint scripts
+- Implemented proper credential handling in entrypoint scripts with quoted arguments to prevent word splitting
 - Used ARG instructions for sensitive data with ENV overrides
+- Fixed potential command injection vulnerability in entrypoint scripts
 
 ## [0.0.8]
 

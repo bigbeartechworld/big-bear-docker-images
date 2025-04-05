@@ -12,9 +12,8 @@ export HOME=/root
 
 # Check if authentication is enabled
 if [ "$TTYD_AUTH_ENABLED" = "true" ]; then
-    # Replace the command with authentication
-    COMMAND="ttyd -p 7681 -W -c ${TTYD_AUTH_USER}:${TTYD_AUTH_PASS} btop"
-    exec $COMMAND
+    # Execute command with authentication (using quoted arguments for security)
+    exec ttyd -p 7681 -W -c "${TTYD_AUTH_USER}:${TTYD_AUTH_PASS}" btop
 else
     # Execute the provided command without authentication
     if [ $# -eq 0 ]; then
