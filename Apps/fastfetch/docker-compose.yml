@@ -5,6 +5,11 @@ services:
     build: .
     # Name the container 'big-bear-fastfetch' for easier identification
     container_name: big-bear-fastfetch
+    # Environment variables for authentication
+    environment:
+      - GOTTY_AUTH_USER=bigbear
+      - GOTTY_AUTH_PASS=password
+      - GOTTY_AUTH_ENABLED=true
     # Run the container in privileged mode to allow access to system metrics
     privileged: true
     # Mount necessary volumes for accessing system information
