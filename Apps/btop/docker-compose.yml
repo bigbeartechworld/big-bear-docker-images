@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   big-bear-btop:
     # Build the Docker image using the Dockerfile in the current directory

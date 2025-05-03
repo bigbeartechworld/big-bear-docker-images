@@ -2,12 +2,13 @@ FROM alpine:3.21.3
 
 # Install required packages for building gotty and running btop
 RUN apk add --no-cache \
-    btop \
     procps \
     curl \
     iproute2 \
     git \
-    go
+    go \
+    tar \
+    make
 
 # Clone, build, and install gotty
 RUN git clone https://github.com/sorenisanerd/gotty.git /tmp/gotty && \
@@ -16,6 +17,20 @@ RUN git clone https://github.com/sorenisanerd/gotty.git /tmp/gotty && \
     mv gotty /usr/local/bin/ && \
     cd / && \
     rm -rf /tmp/gotty
+
+# Set btop version
+ARG BTOP_VERSION=1.4.2
+
+# Install specific btop version from GitHub release
+RUN if [ "$BTOP_VERSION" = "latest" ]; then \
+    DOWNLOAD_URL="https://github.com/aristocratos/btop/releases/latest/download/btop-x86_64-linux-musl.tbz"; \
+    else \
+    DOWNLOAD_URL="https://github.com/aristocratos/btop/releases/download/v${BTOP_VERSION}/btop-x86_64-linux-musl.tbz"; \
+    fi && \
+    curl -L ${DOWNLOAD_URL} | tar -xj -C /tmp/ && \
+    cd /tmp/btop && \
+    make install && \
+    rm -rf /tmp/btop
 
 # Set the terminal to support UTF-8
 ENV LANG=C.UTF-8
