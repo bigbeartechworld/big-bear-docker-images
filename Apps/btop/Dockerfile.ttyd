@@ -2,7 +2,6 @@ FROM debian:12.10
 
 # Install required packages for building ttyd and running btop
 RUN apt-get update && apt-get install -y \
-    btop \
     procps \
     curl \
     iproute2 \
@@ -24,6 +23,20 @@ RUN git clone https://github.com/tsl0922/ttyd.git /tmp/ttyd && \
     make install && \
     cd / && \
     rm -rf /tmp/ttyd
+
+# Set btop version
+ARG BTOP_VERSION=1.4.2
+
+# Install specific btop version from GitHub release
+RUN if [ "$BTOP_VERSION" = "latest" ]; then \
+    DOWNLOAD_URL="https://github.com/aristocratos/btop/releases/latest/download/btop-x86_64-linux-musl.tbz"; \
+    else \
+    DOWNLOAD_URL="https://github.com/aristocratos/btop/releases/download/v${BTOP_VERSION}/btop-x86_64-linux-musl.tbz"; \
+    fi && \
+    curl -L ${DOWNLOAD_URL} | tar -xj -C /tmp/ && \
+    cd /tmp/btop && \
+    make install && \
+    rm -rf /tmp/btop
 
 # Set the terminal to support UTF-8
 ENV LANG=C.UTF-8
