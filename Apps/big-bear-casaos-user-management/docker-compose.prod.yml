@@ -1,7 +1,7 @@
 services:
   big-bear-casaos-user-management:
     # The service name for the user management system
-    image: bigbeartechworld/big-bear-casaos-user-management:0.0.1
+    image: bigbeartechworld/big-bear-casaos-user-management:0.1.0
     # The Docker image to use for this service, with the specified version tag
     container_name: big-bear-casaos-user-management
     # A custom name for the container, making it easier to identify
