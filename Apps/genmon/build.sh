@@ -2,7 +2,7 @@
 
 # Set image name and tag
 IMAGE_NAME="bigbeartechworld/big-bear-genmon"
-TAG="0.0.1"
+TAG="1.19.05"
 
 # Check if docker is installed
 if ! command -v docker &> /dev/null; then
