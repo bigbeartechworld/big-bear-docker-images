@@ -12,21 +12,32 @@ services:
       - TZ=America/Chicago # Set the timezone to 'America/Chicago'
     # Ports to expose, mapping the host port to the container port
     ports:
-      - "38443:443" # Map TCP port 443 in the container to port 38443 on the host
-      - "8000:8000" # Map TCP port 8000 in the container to port 8000 on the host
+      # Map TCP port 443 in the container to port 38443 on the host
+      - "38443:443"
+      # Map TCP port 8000 in the container to port 8000 on the host
+      - "8000:8000"
     # Define the restart policy for the service container
     restart: unless-stopped # Restart the container unless it is explicitly stopped
     # Mount host paths or named volumes into the container
     volumes:
-      - big_bear_genmon_data:/git/genmon # Mount a named volume 'big_bear_genmon_data' to store data persistently at /git/genmon in the container
-      - big_bear_genmon_config:/etc/genmon # Mount a named volume 'big_bear_genmon_config' to store configuration files persistently at /etc/genmon in the container
-      - big_bear_genmon_logs:/var/log # Mount a named volume 'big_bear_genmon_logs' to store logs persistently at /var/log in the container
+      # Mount a named volume 'big_bear_genmon_data' to store data persistently at /git/genmon in the container
+      - big_bear_genmon_data:/git/genmon
+      # Mount a named volume 'big_bear_genmon_config' to store configuration files persistently at /etc/genmon in the container
+      - big_bear_genmon_config:/etc/genmon
+      # Mount a named volume 'big_bear_genmon_logs' to store logs persistently at /var/log in the container
+      - big_bear_genmon_logs:/var/log
 
 # Define volumes used by the services
 volumes:
-  big_bear_genmon_data: # Define a volume for persistent data storage
-    driver: local # Use the local driver for persistent data storage
-  big_bear_genmon_config: # Define a volume for persistent configuration storage
-    driver: local # Use the local driver for persistent configuration storage
-  big_bear_genmon_logs: # Define a volume for persistent log storage
-    driver: local # Use the local driver for persistent log storage
+  # Define a volume for persistent data storage
+  big_bear_genmon_data:
+    # Use the local driver for persistent data storage
+    driver: local
+  # Define a volume for persistent configuration storage
+  big_bear_genmon_config:
+    # Use the local driver for persistent configuration storage
+    driver: local
+  # Define a volume for persistent log storage
+  big_bear_genmon_logs:
+    # Use the local driver for persistent log storage
+    driver: local
