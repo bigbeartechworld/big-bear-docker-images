@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "genmon/**"
+      - "Apps/genmon/**"
 
 jobs:
   create:
