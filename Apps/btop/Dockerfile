@@ -8,7 +8,12 @@ RUN apk add --no-cache \
     git \
     go \
     tar \
-    make
+    make \
+    g++ \
+    gcc \
+    cmake \
+    ninja \
+    linux-headers
 
 # Clone, build, and install gotty
 RUN git clone https://github.com/sorenisanerd/gotty.git /tmp/gotty && \
@@ -21,15 +26,13 @@ RUN git clone https://github.com/sorenisanerd/gotty.git /tmp/gotty && \
 # Set btop version
 ARG BTOP_VERSION=1.4.2
 
-# Install specific btop version from GitHub release
-RUN if [ "$BTOP_VERSION" = "latest" ]; then \
-    DOWNLOAD_URL="https://github.com/aristocratos/btop/releases/latest/download/btop-x86_64-linux-musl.tbz"; \
-    else \
-    DOWNLOAD_URL="https://github.com/aristocratos/btop/releases/download/v${BTOP_VERSION}/btop-x86_64-linux-musl.tbz"; \
-    fi && \
-    curl -L ${DOWNLOAD_URL} | tar -xj -C /tmp/ && \
+# Clone and build btop with GPU support
+RUN git clone https://github.com/aristocratos/btop.git /tmp/btop && \
     cd /tmp/btop && \
+    git checkout v${BTOP_VERSION} && \
+    make GPU_SUPPORT=true && \
     make install && \
+    cd / && \
     rm -rf /tmp/btop
 
 # Set the terminal to support UTF-8
@@ -51,7 +54,7 @@ RUN mkdir -p /root/.config/btop.default
 RUN mkdir -p /root/.config/btop/themes
 
 # Copy the default btop.conf to a separate directory
-COPY btop.conf /root/.config/btop.default/btop.conf
+COPY config/btop.conf /root/.config/btop.default/btop.conf
 
 # Expose the port gotty will run on
 EXPOSE 7681
@@ -59,6 +62,10 @@ EXPOSE 7681
 # Start gotty and run btop
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
+
+# Set capabilities to enable GPU monitoring for Intel GPUs
+RUN apk add --no-cache libcap && \
+    setcap cap_sys_admin=ep /usr/local/bin/btop
 
 # Set entrypoint
 ENTRYPOINT ["/entrypoint.sh"]
