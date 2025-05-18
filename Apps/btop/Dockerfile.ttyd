@@ -1,6 +1,6 @@
 FROM debian:12.10
 
-# Install required packages for building ttyd and running btop
+# Install required packages for ttyd and btop
 RUN apt-get update && apt-get install -y \
     procps \
     curl \
@@ -8,9 +8,12 @@ RUN apt-get update && apt-get install -y \
     git \
     cmake \
     g++ \
+    gcc \
     pkg-config \
     libjson-c-dev \
     libwebsockets-dev \
+    btop \
+    libcap2-bin \
     && apt-get clean
 
 # Clone, build, and install ttyd
@@ -24,20 +27,6 @@ RUN git clone https://github.com/tsl0922/ttyd.git /tmp/ttyd && \
     cd / && \
     rm -rf /tmp/ttyd
 
-# Set btop version
-ARG BTOP_VERSION=1.4.2
-
-# Install specific btop version from GitHub release
-RUN if [ "$BTOP_VERSION" = "latest" ]; then \
-    DOWNLOAD_URL="https://github.com/aristocratos/btop/releases/latest/download/btop-x86_64-linux-musl.tbz"; \
-    else \
-    DOWNLOAD_URL="https://github.com/aristocratos/btop/releases/download/v${BTOP_VERSION}/btop-x86_64-linux-musl.tbz"; \
-    fi && \
-    curl -L ${DOWNLOAD_URL} | tar -xj -C /tmp/ && \
-    cd /tmp/btop && \
-    make install && \
-    rm -rf /tmp/btop
-
 # Set the terminal to support UTF-8
 ENV LANG=C.UTF-8
 
@@ -50,6 +39,12 @@ ENV TTYD_AUTH_USER=${TTYD_AUTH_USER}
 ENV TTYD_AUTH_PASS=${TTYD_AUTH_PASS}
 ENV TTYD_AUTH_ENABLED=${TTYD_AUTH_ENABLED}
 
+# Create default config directory and themes directory
+RUN mkdir -p /root/.config/btop.default /root/.config/btop/themes
+
+# Copy config file if using config directory
+COPY config/btop.conf /root/.config/btop.default/btop.conf
+
 # Expose the port ttyd will run on
 EXPOSE 7681
 
@@ -59,6 +54,9 @@ VOLUME ["/root/.config/btop"]
 # Copy entrypoint script
 COPY entrypoint.ttyd.sh /entrypoint.ttyd.sh
 RUN chmod +x /entrypoint.ttyd.sh
+
+# Set capabilities to enable GPU monitoring
+RUN setcap cap_sys_admin=ep /usr/bin/btop
 
 # Set entrypoint
 ENTRYPOINT ["/entrypoint.ttyd.sh"]

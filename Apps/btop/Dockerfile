@@ -1,14 +1,14 @@
 FROM alpine:3.21.3
 
-# Install required packages for building gotty and running btop
+# Install required packages for running btop and gotty
 RUN apk add --no-cache \
     procps \
     curl \
     iproute2 \
     git \
     go \
-    tar \
-    make
+    btop \
+    libcap
 
 # Clone, build, and install gotty
 RUN git clone https://github.com/sorenisanerd/gotty.git /tmp/gotty && \
@@ -17,20 +17,6 @@ RUN git clone https://github.com/sorenisanerd/gotty.git /tmp/gotty && \
     mv gotty /usr/local/bin/ && \
     cd / && \
     rm -rf /tmp/gotty
-
-# Set btop version
-ARG BTOP_VERSION=1.4.2
-
-# Install specific btop version from GitHub release
-RUN if [ "$BTOP_VERSION" = "latest" ]; then \
-    DOWNLOAD_URL="https://github.com/aristocratos/btop/releases/latest/download/btop-x86_64-linux-musl.tbz"; \
-    else \
-    DOWNLOAD_URL="https://github.com/aristocratos/btop/releases/download/v${BTOP_VERSION}/btop-x86_64-linux-musl.tbz"; \
-    fi && \
-    curl -L ${DOWNLOAD_URL} | tar -xj -C /tmp/ && \
-    cd /tmp/btop && \
-    make install && \
-    rm -rf /tmp/btop
 
 # Set the terminal to support UTF-8
 ENV LANG=C.UTF-8
@@ -51,7 +37,7 @@ RUN mkdir -p /root/.config/btop.default
 RUN mkdir -p /root/.config/btop/themes
 
 # Copy the default btop.conf to a separate directory
-COPY btop.conf /root/.config/btop.default/btop.conf
+COPY config/btop.conf /root/.config/btop.default/btop.conf
 
 # Expose the port gotty will run on
 EXPOSE 7681
@@ -59,6 +45,11 @@ EXPOSE 7681
 # Start gotty and run btop
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
+
+# Set capabilities to enable GPU monitoring if on x86_64
+RUN if [ "$(uname -m)" = "x86_64" ]; then \
+    setcap cap_sys_admin=ep /usr/bin/btop; \
+    fi
 
 # Set entrypoint
 ENTRYPOINT ["/entrypoint.sh"]
