@@ -1,19 +1,14 @@
 FROM alpine:3.21.3
 
-# Install required packages for building gotty and running btop
+# Install required packages for running btop and gotty
 RUN apk add --no-cache \
     procps \
     curl \
     iproute2 \
     git \
     go \
-    tar \
-    make \
-    g++ \
-    gcc \
-    cmake \
-    ninja \
-    linux-headers
+    btop \
+    libcap
 
 # Clone, build, and install gotty
 RUN git clone https://github.com/sorenisanerd/gotty.git /tmp/gotty && \
@@ -22,18 +17,6 @@ RUN git clone https://github.com/sorenisanerd/gotty.git /tmp/gotty && \
     mv gotty /usr/local/bin/ && \
     cd / && \
     rm -rf /tmp/gotty
-
-# Set btop version
-ARG BTOP_VERSION=1.4.2
-
-# Clone and build btop with GPU support
-RUN git clone https://github.com/aristocratos/btop.git /tmp/btop && \
-    cd /tmp/btop && \
-    git checkout v${BTOP_VERSION} && \
-    make GPU_SUPPORT=true && \
-    make install && \
-    cd / && \
-    rm -rf /tmp/btop
 
 # Set the terminal to support UTF-8
 ENV LANG=C.UTF-8
@@ -63,9 +46,10 @@ EXPOSE 7681
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Set capabilities to enable GPU monitoring for Intel GPUs
-RUN apk add --no-cache libcap && \
-    setcap cap_sys_admin=ep /usr/local/bin/btop
+# Set capabilities to enable GPU monitoring if on x86_64
+RUN if [ "$(uname -m)" = "x86_64" ]; then \
+    setcap cap_sys_admin=ep /usr/bin/btop; \
+    fi
 
 # Set entrypoint
 ENTRYPOINT ["/entrypoint.sh"]
