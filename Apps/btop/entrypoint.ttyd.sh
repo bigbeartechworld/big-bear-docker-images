@@ -3,7 +3,7 @@
 # Check if btop.conf exists in the mounted directory
 if [ ! -f /root/.config/btop/btop.conf ]; then
     # Copy default config if it doesn't exist
-    mkdir -p /root/.config/btop
+    mkdir -p /root/.config/btop/themes
     cp /root/.config/btop.default/btop.conf /root/.config/btop/btop.conf
     # Copy default themes if they don't exist
     cp -rn /usr/share/btop/themes/* /root/.config/btop/themes 2>/dev/null || true
