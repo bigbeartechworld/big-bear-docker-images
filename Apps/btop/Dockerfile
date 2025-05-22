@@ -46,10 +46,5 @@ EXPOSE 7681
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Set capabilities to enable GPU monitoring if on x86_64
-RUN if [ "$(uname -m)" = "x86_64" ]; then \
-    setcap cap_sys_admin=ep /usr/bin/btop; \
-    fi
-
 # Set entrypoint
 ENTRYPOINT ["/entrypoint.sh"]
