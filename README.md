@@ -19,8 +19,8 @@ docker pull bigbeartechworld/<image-name>
 | FastFetch | bigbeartechworld/big-bear-fastfetch | 0.0.3 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt_o9i99IYOCVKfWkBvErgth) |  |
 | Genmon | bigbeartechworld/big-bear-genmon | 1.19.05 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt_g0nT2F7l0a1gvGZl57CWn) |  |
 | NCDU | bigbeartechworld/big-bear-ncdu | 0.0.3 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt9Au1cUiVkyx25bOxAbhF83) |  |
-| Nextcloud with SMBClient | bigbeartechworld/big-bear-nextcloud-with-smbclient | 0.0.9 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt9Au1cUiVkyx25bOxAbhF83) |  |
-| Pihole and Unbound | bigbeartechworld/big-bear-pihole-unbound | 2025.04.0 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt_21TJEBkhIm52aU-w3K4vi) | [Docs](https://community.bigbeartechworld.com/t/added-pihole-and-unbound-to-bigbeardockerimages/192) |
+| Nextcloud with SMBClient | bigbeartechworld/big-bear-nextcloud-with-smbclient | 0.0.10 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt9Au1cUiVkyx25bOxAbhF83) |  |
+| Pihole and Unbound | bigbeartechworld/big-bear-pihole-unbound | 2025.06.2 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt_21TJEBkhIm52aU-w3K4vi) | [Docs](https://community.bigbeartechworld.com/t/added-pihole-and-unbound-to-bigbeardockerimages/192) |
 | PocketBase | bigbeartechworld/big-bear-pocketbase | 0.25.7 |  | [Docs](https://community.bigbeartechworld.com/t/pocketbase-is-on-bigbeardockerimages/28) |
 | Unbound | bigbeartechworld/big-bear-unbound | 1.20.0 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt9_yeFJvG6Nhby8gTVStxb0) |  |
 
