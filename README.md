@@ -15,7 +15,7 @@ docker pull bigbeartechworld/<image-name>
 | Application | Docker Image | Version | YouTube Video | Docs |
 | --- | --- | --- | --- | --- |
 | Big Bear CasaOS User Management | bigbeartechworld/big-bear-casaos-user-management | 0.1.0 | [YouTube Video](https://youtu.be/-a9k8fLAbRE) | [Docs](https://community.bigbeartechworld.com/t/added-bigbearcasaos-user-management-to-bigbearcasaos/2227?u=dragonfire1119) |
-| BTOP | bigbeartechworld/big-bear-btop | 0.1.3 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt96nLpa72tqLIGl54gSmSAS) |  |
+| BTOP | bigbeartechworld/big-bear-btop | 0.1.4 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt96nLpa72tqLIGl54gSmSAS) |  |
 | FastFetch | bigbeartechworld/big-bear-fastfetch | 0.0.3 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt_o9i99IYOCVKfWkBvErgth) |  |
 | Genmon | bigbeartechworld/big-bear-genmon | 1.19.05 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt_g0nT2F7l0a1gvGZl57CWn) |  |
 | NCDU | bigbeartechworld/big-bear-ncdu | 0.0.3 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt9Au1cUiVkyx25bOxAbhF83) |  |
