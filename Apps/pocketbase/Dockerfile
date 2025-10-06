@@ -1,11 +1,11 @@
 # Use a small base image
-FROM alpine:3.20
+FROM alpine:3.21.3
 
 # Install dependencies
 RUN apk --no-cache add ca-certificates wget unzip
 
 # Set Pocketbase version
-ARG POCKETBASE_VERSION=0.29.3
+ARG POCKETBASE_VERSION=0.30.1
 
 # Detect the architecture of the building machine
 ARG TARGETARCH
