@@ -1,5 +1,5 @@
 # Use an official Debian-based image as a base
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 # Install Unbound and clean up
 RUN apt-get update && \
