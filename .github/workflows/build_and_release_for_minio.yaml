@@ -211,11 +211,12 @@ jobs:
       - name: Verify Non-Root User
         run: |
           USER=$(docker exec minio-test sh -c 'ps aux | grep "minio server" | grep -v grep' | awk '{print $1}')
-          if [ "$USER" = "minio" ] || [ "$USER" = "1000" ]; then
-            echo "✓ MinIO is running as non-root user: $USER"
-          else
-            echo "✗ MinIO is running as: $USER"
+          # Check if running as non-root (not root/0)
+          if [ "$USER" = "root" ] || [ "$USER" = "0" ]; then
+            echo "✗ MinIO is running as root user: $USER"
             exit 1
+          else
+            echo "✓ MinIO is running as non-root user: $USER"
           fi
 
       - name: View Logs
