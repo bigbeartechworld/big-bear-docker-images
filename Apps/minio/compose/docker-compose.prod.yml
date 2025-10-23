@@ -1,0 +1,49 @@
+services:
+  big-bear-minio:
+    image: bigbeartechworld/big-bear-minio:latest
+    container_name: big-bear-minio-prod
+    restart: always
+    ports:
+      - "9000:9000"   # MinIO API
+      - "9001:9001"   # MinIO Console (Web UI)
+    environment:
+      # CHANGE THESE VALUES IN PRODUCTION!
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-changeme123}
+      # Optional production settings
+      MINIO_BROWSER: ${MINIO_BROWSER:-on}
+      MINIO_REGION: ${MINIO_REGION:-us-east-1}
+    volumes:
+      - big_bear_minio_prod_data:/data
+      # Optional: Mount TLS certificates
+      # - ./certs:/data/.minio/certs:ro
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    # Resource limits for production
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    # User namespace remapping (optional)
+    # user: "1000:1000"
+
+volumes:
+  big_bear_minio_prod_data:
+    driver: local
+    # For production, consider using a named volume with a backup strategy
+    # driver_opts:
+    #   type: none
+    #   o: bind
+    #   device: /path/to/production/data

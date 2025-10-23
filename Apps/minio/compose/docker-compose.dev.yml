@@ -1,0 +1,23 @@
+services:
+  big-bear-minio:
+    build: ..
+    image: bigbeartechworld/big-bear-minio:dev
+    container_name: big-bear-minio-dev
+    restart: unless-stopped
+    ports:
+      - "9002:9000"   # MinIO API (alternative port for dev)
+      - "9003:9001"   # MinIO Console (Web UI - alternative port for dev)
+    environment:
+      # Development credentials - NOT FOR PRODUCTION
+      MINIO_ROOT_USER: devadmin
+      MINIO_ROOT_PASSWORD: devpassword123
+      MINIO_BROWSER: on
+    volumes:
+      - ./data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s

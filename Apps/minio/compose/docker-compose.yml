@@ -1,0 +1,33 @@
+services:
+  big-bear-minio:
+    build: ..
+    image: bigbeartechworld/big-bear-minio:latest
+    # For production, pin to a specific version:
+    # image: bigbeartechworld/big-bear-minio:RELEASE.2025-10-15T17-29-55Z
+    container_name: big-bear-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"   # MinIO API
+      - "9001:9001"   # MinIO Console (Web UI)
+    environment:
+      # Default credentials - CHANGE THESE IN PRODUCTION!
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      # Optional: Set custom user/group
+      # MINIO_USERNAME: minio
+      # MINIO_GROUPNAME: minio
+      # MINIO_UID: 1000
+      # MINIO_GID: 1000
+    volumes:
+      - big_bear_minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  big_bear_minio_data:
+    driver: local
