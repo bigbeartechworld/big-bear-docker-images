@@ -1,0 +1,34 @@
+{
+  "name": "MinIO",
+  "description": "High-performance, S3-compatible object storage built from source",
+  "version": "latest",
+  "category": "Storage",
+  "tags": ["storage", "s3", "object-storage", "backup", "cloud-storage"],
+  "platform": "linux/amd64,linux/arm64",
+  "logo": "https://min.io/resources/img/logo.svg",
+  "documentation": "https://docs.min.io/",
+  "github": "https://github.com/minio/minio",
+  "ports": {
+    "9000/tcp": "MinIO API",
+    "9001/tcp": "MinIO Console (Web UI)"
+  },
+  "volumes": {
+    "/data": "MinIO data directory"
+  },
+  "environment": {
+    "MINIO_ROOT_USER": {
+      "description": "MinIO root username",
+      "default": "minioadmin"
+    },
+    "MINIO_ROOT_PASSWORD": {
+      "description": "MinIO root password",
+      "default": "minioadmin"
+    }
+  },
+  "notes": [
+    "Default credentials are minioadmin:minioadmin - CHANGE THESE IN PRODUCTION!",
+    "Access the MinIO Console at http://localhost:9001",
+    "API endpoint is available at http://localhost:9000",
+    "Built from source following MinIO's source-only distribution model"
+  ]
+}

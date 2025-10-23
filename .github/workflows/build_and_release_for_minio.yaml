@@ -1,0 +1,230 @@
+name: "Build and release for minio"
+
+on:
+  workflow_dispatch:
+    inputs:
+      minio_version:
+        description: 'MinIO version tag (e.g., RELEASE.2025-10-15T17-29-55Z or "latest")'
+        required: false
+        default: 'latest'
+  schedule:
+    # Run weekly on Mondays at 2 AM UTC to check for new MinIO releases
+    - cron: '0 2 * * 1'
+  push:
+    branches:
+      - main
+    paths:
+      - 'Apps/minio/**'
+      - '.github/workflows/build_and_release_for_minio.yaml'
+
+env:
+  IMAGE_NAME: bigbeartechworld/big-bear-minio
+  DOCKERFILE_PATH: Apps/minio
+
+jobs:
+  check-minio-release:
+    name: Check MinIO Latest Release
+    runs-on: ubuntu-latest
+    outputs:
+      minio_version: ${{ steps.get_version.outputs.version }}
+      should_build: ${{ steps.check_build.outputs.should_build }}
+    steps:
+      - name: Get Latest MinIO Release
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ "${{ github.event.inputs.minio_version }}" != "latest" ]; then
+            VERSION="${{ github.event.inputs.minio_version }}"
+          else
+            # Get latest release tag from GitHub API
+            VERSION=$(curl -s https://api.github.com/repos/minio/minio/releases/latest | jq -r '.tag_name')
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "MinIO version: ${VERSION}"
+
+      - name: Check if Build Needed
+        id: check_build
+        run: |
+          # Always build on manual trigger or push
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] || [ "${{ github.event_name }}" == "push" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          else
+            # For scheduled runs, check if the tag already exists in Docker Hub
+            VERSION="${{ steps.get_version.outputs.version }}"
+            TOKEN=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${{ env.IMAGE_NAME }}:pull" | jq -r '.token')
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${TOKEN}" "https://registry-1.docker.io/v2/${{ env.IMAGE_NAME }}/manifests/${VERSION}")
+            
+            if [ "$STATUS" == "200" ]; then
+              echo "should_build=false" >> "$GITHUB_OUTPUT"
+              echo "Tag ${VERSION} already exists, skipping build"
+            else
+              echo "should_build=true" >> "$GITHUB_OUTPUT"
+              echo "Tag ${VERSION} not found, will build"
+            fi
+          fi
+
+  build-and-push:
+    name: Build and Push Docker Image
+    needs: check-minio-release
+    if: needs.check-minio-release.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            # Always tag as 'latest' for the most recent build
+            type=raw,value=latest
+            # Tag with the specific MinIO version for release history
+            # e.g., RELEASE.2025-10-15T17-29-55Z
+            type=raw,value=${{ needs.check-minio-release.outputs.minio_version }}
+            # Tag with git commit SHA for traceability
+            type=sha,prefix={{branch}}-
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.DOCKERFILE_PATH }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            MINIO_VERSION=${{ needs.check-minio-release.outputs.minio_version }}
+
+      - name: Update Docker Hub Description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ env.IMAGE_NAME }}
+          readme-filepath: ${{ env.DOCKERFILE_PATH }}/README.md
+
+      - name: Create GitHub Release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: minio-${{ needs.check-minio-release.outputs.minio_version }}
+          name: MinIO ${{ needs.check-minio-release.outputs.minio_version }}
+          body: |
+            ## MinIO Docker Image Release
+            
+            Built from MinIO source version: `${{ needs.check-minio-release.outputs.minio_version }}`
+            
+            ### Docker Images
+            - `${{ env.IMAGE_NAME }}:latest`
+            - `${{ env.IMAGE_NAME }}:${{ needs.check-minio-release.outputs.minio_version }}`
+            
+            ### Pull the image
+            ```bash
+            docker pull ${{ env.IMAGE_NAME }}:latest
+            ```
+            
+            ### What's Changed
+            - Built from MinIO source (source-only distribution)
+            - Multi-architecture support (AMD64/ARM64)
+            - Security hardened (non-root user)
+            - Comprehensive documentation included
+            
+            ### References
+            - [MinIO Release Notes](https://github.com/minio/minio/releases/tag/${{ needs.check-minio-release.outputs.minio_version }})
+            - [Docker Hub Image](https://hub.docker.com/r/${{ env.IMAGE_NAME }})
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  test-image:
+    name: Test Docker Image
+    needs: [check-minio-release, build-and-push]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Pull Built Image
+        run: |
+          docker pull ${{ env.IMAGE_NAME }}:latest
+
+      - name: Test MinIO Binary
+        run: |
+          docker run --rm ${{ env.IMAGE_NAME }}:latest minio --version
+
+      - name: Start MinIO Container
+        run: |
+          docker run -d \
+            --name minio-test \
+            -p 9000:9000 \
+            -p 9001:9001 \
+            -e MINIO_ROOT_USER=testadmin \
+            -e MINIO_ROOT_PASSWORD=testpassword123 \
+            ${{ env.IMAGE_NAME }}:latest \
+            server /data --console-address ":9001"
+
+      - name: Wait for MinIO to Start
+        run: |
+          echo "Waiting for MinIO to start..."
+          for i in {1..30}; do
+            if curl -sf http://localhost:9000/minio/health/live > /dev/null 2>&1; then
+              echo "MinIO is ready!"
+              exit 0
+            fi
+            echo "Attempt $i/30: MinIO not ready yet..."
+            sleep 2
+          done
+          echo "MinIO failed to start"
+          docker logs minio-test
+          exit 1
+
+      - name: Test Health Endpoint
+        run: |
+          curl -f http://localhost:9000/minio/health/live
+          curl -f http://localhost:9000/minio/health/ready
+
+      - name: Test Console Access
+        run: |
+          curl -f http://localhost:9001/
+
+      - name: Verify Non-Root User
+        run: |
+          USER=$(docker exec minio-test sh -c 'ps aux | grep "minio server" | grep -v grep' | awk '{print $1}')
+          if [ "$USER" = "minio" ] || [ "$USER" = "1000" ]; then
+            echo "✓ MinIO is running as non-root user: $USER"
+          else
+            echo "✗ MinIO is running as: $USER"
+            exit 1
+          fi
+
+      - name: View Logs
+        if: always()
+        run: |
+          docker logs minio-test
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop minio-test || true
+          docker rm minio-test || true

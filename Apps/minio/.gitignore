@@ -1,0 +1,11 @@
+# Environment files with sensitive data
+.env
+
+# MinIO data directory (if mounted locally)
+data/
+
+# Build artifacts
+*.log
+
+# Docs
+docs/
