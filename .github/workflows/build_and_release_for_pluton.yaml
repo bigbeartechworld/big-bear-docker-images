@@ -34,8 +34,27 @@ jobs:
           if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ "${{ github.event.inputs.pluton_version }}" != "latest" ]; then
             VERSION="${{ github.event.inputs.pluton_version }}"
           else
-            # Get latest commit SHA from GitHub API
-            VERSION=$(curl -s https://api.github.com/repos/plutonhq/pluton/commits/main | jq -r '.sha' | cut -c1-7)
+            # Get latest commit SHA from GitHub API with validation
+            RESPONSE=$(curl -s -w "%{http_code}" https://api.github.com/repos/plutonhq/pluton/commits/main)
+            HTTP_CODE=${RESPONSE: -3}
+            CONTENT=${RESPONSE:0:${#RESPONSE}-3}
+
+            if [ "$HTTP_CODE" != "200" ]; then
+              echo "Error: GitHub API returned status $HTTP_CODE"
+              exit 1
+            fi
+
+            if [ -z "$CONTENT" ]; then
+              echo "Error: Empty response from GitHub API"
+              exit 1
+            fi
+
+            VERSION=$(echo "$CONTENT" | jq -r '.sha' | cut -c1-7)
+            
+            if [[ ! "$VERSION" =~ ^[0-9a-f]{7}$ ]]; then
+              echo "Error: Invalid version format received: $VERSION"
+              exit 1
+            fi
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Pluton version: ${VERSION}"
@@ -46,7 +65,14 @@ jobs:
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
           # Check if image with this tag already exists
-          CODE=$(curl --silent -o /dev/null -w "%{http_code}" https://hub.docker.com/v2/repositories/${{ env.IMAGE_NAME }}/tags/${VERSION})
+          CODE=$(curl --silent --max-time 10 -o /dev/null -w "%{http_code}" https://hub.docker.com/v2/repositories/${{ env.IMAGE_NAME }}/tags/${VERSION})
+          
+          if [ "$CODE" = "000" ] || [ -z "$CODE" ]; then
+            echo "Error: Failed to check Docker Hub (curl error)"
+            echo "exists=unknown" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
           if [ "$CODE" == "200" ]; then
             echo "Image exists"
             echo "exists=true" >> "$GITHUB_OUTPUT"
