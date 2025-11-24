@@ -1,0 +1,44 @@
+{
+  "name": "Pluton",
+  "description": "A modern, self-hosted backup solution for secure, encrypted backups across local and cloud storage.",
+  "version": "latest",
+  "category": "Backup",
+  "tags": ["backup", "restic", "rclone", "self-hosted", "encrypted"],
+  "platform": "linux/amd64,linux/arm64",
+  "logo": "https://pluton.b-cdn.net/logo.png",
+  "documentation": "https://docs.usepluton.com/",
+  "github": "https://github.com/plutonhq/pluton",
+  "ports": {
+    "5173/tcp": "Pluton Web UI"
+  },
+  "volumes": {
+    "/data": "Pluton data directory"
+  },
+  "environment": {
+    "SECRET": {
+      "description": "Master encryption key for securing sensitive data (min 12 chars)",
+      "default": "CHANGE_ME_SECRET_KEY_123"
+    },
+    "ENCRYPTION_KEY": {
+      "description": "Encryption key for restic/rclone Snapshot encryption (min 12 chars)",
+      "default": "CHANGE_ME_ENCRYPTION_KEY_123"
+    },
+    "APIKEY": {
+      "description": "API authentication key",
+      "default": "CHANGE_ME_API_KEY_123"
+    },
+    "USER_NAME": {
+      "description": "Admin username for login",
+      "default": "admin"
+    },
+    "USER_PASSWORD": {
+      "description": "Admin password for login",
+      "default": "password"
+    }
+  },
+  "notes": [
+    "Default credentials are admin:password - CHANGE THESE IN PRODUCTION!",
+    "Access the Pluton UI at http://localhost:5173",
+    "Ensure you set strong secrets for SECRET, ENCRYPTION_KEY, and APIKEY."
+  ]
+}

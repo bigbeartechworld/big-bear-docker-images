@@ -1,0 +1,112 @@
+name: "Build and release for pluton"
+
+on:
+  workflow_dispatch:
+    inputs:
+      pluton_version:
+        description: 'Pluton version tag (e.g., "latest" or commit sha)'
+        required: false
+        default: 'latest'
+  schedule:
+    - cron: '0 2 * * 1' # Weekly
+  push:
+    branches:
+      - main
+    paths:
+      - 'Apps/pluton/**'
+      - '.github/workflows/build_and_release_for_pluton.yaml'
+
+env:
+  IMAGE_NAME: bigbeartechworld/big-bear-pluton
+  DOCKERFILE_PATH: Apps/pluton
+
+jobs:
+  check-pluton-release:
+    name: Check Pluton Latest Release
+    runs-on: ubuntu-latest
+    outputs:
+      pluton_version: ${{ steps.get_version.outputs.version }}
+      should_build: ${{ steps.check_build.outputs.should_build }}
+    steps:
+      - name: Get Latest Pluton Commit
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ "${{ github.event.inputs.pluton_version }}" != "latest" ]; then
+            VERSION="${{ github.event.inputs.pluton_version }}"
+          else
+            # Get latest commit SHA from GitHub API
+            VERSION=$(curl -s https://api.github.com/repos/plutonhq/pluton/commits/main | jq -r '.sha' | cut -c1-7)
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Pluton version: ${VERSION}"
+
+      - name: Check if image exists
+        id: check_image
+        if: github.event_name == 'schedule'
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          # Check if image with this tag already exists
+          CODE=$(curl --silent -o /dev/null -w "%{http_code}" https://hub.docker.com/v2/repositories/${{ env.IMAGE_NAME }}/tags/${VERSION})
+          if [ "$CODE" == "200" ]; then
+            echo "Image exists"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Image does not exist"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check if Build Needed
+        id: check_build
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] || [ "${{ github.event_name }}" == "push" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.check_image.outputs.exists }}" == "false" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-and-push:
+    name: Build and Push
+    needs: check-pluton-release
+    if: needs.check-pluton-release.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=${{ needs.check-pluton-release.outputs.pluton_version }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.DOCKERFILE_PATH }}
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
