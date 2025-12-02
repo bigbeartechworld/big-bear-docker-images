@@ -18,9 +18,29 @@ if [ "${1#-}" = "$1" ] && [ -n "$1" ]; then
 fi
 
 # Update root trust anchor for DNSSEC validation
-# unbound-anchor returns 1 if the anchor was updated, which is not an error
+# unbound-anchor exit codes:
+#   0 = no update was necessary, anchor up to date
+#   1 = updated the anchor, fetch was successful
+#   other = failure (network, permissions, etc.)
 echo "Updating DNSSEC root trust anchor..."
-unbound-anchor -a /var/lib/unbound/root.key || true
+ANCHOR_OUTPUT=$(unbound-anchor -a /var/lib/unbound/root.key 2>&1) || ANCHOR_EXIT=$?
+ANCHOR_EXIT=${ANCHOR_EXIT:-0}
+
+case $ANCHOR_EXIT in
+    0)
+        echo "Root trust anchor is up to date"
+        ;;
+    1)
+        echo "Root trust anchor was updated successfully"
+        ;;
+    *)
+        echo "ERROR: unbound-anchor failed with exit code $ANCHOR_EXIT"
+        if [ -n "$ANCHOR_OUTPUT" ]; then
+            echo "Output: $ANCHOR_OUTPUT"
+        fi
+        exit 1
+        ;;
+esac
 
 # Ensure proper ownership of the root.key file
 chown unbound:unbound /var/lib/unbound/root.key 2>/dev/null || true
