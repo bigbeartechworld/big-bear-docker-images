@@ -63,9 +63,11 @@ LABEL org.opencontainers.image.licenses="MIT"
 LABEL org.opencontainers.image.version="1.24.2"
 
 # Install runtime dependencies and dnsutils for healthcheck
+# curl is needed by entrypoint to download root.hints if volume mount overwrites it
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         ca-certificates \
+        curl \
         libssl3 \
         libexpat1 \
         libnghttp2-14 \
