@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Calver Versioning](https://calver.org/).
+and this project follows [Unbound's release versioning](https://nlnetlabs.nl/projects/unbound/about/).
 
 ## [Unreleased]
 
@@ -40,5 +40,5 @@ and this project adheres to [Calver Versioning](https://calver.org/).
 ### Security
 - Switched to non-root user execution in Docker container
 - Enabled comprehensive DNS security features including DNSSEC validation and attack protections
-- Built with latest Unbound 1.24.2 which includes CVE-2025-11411 fix (domain hijacking protection)
+- Built with Unbound 1.24.2 which includes the CVE-2025-11411 fix (first released in 1.24.1, domain hijacking protection)
 

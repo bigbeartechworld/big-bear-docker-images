@@ -20,9 +20,11 @@ RUN apt-get update && \
         flex \
         && rm -rf /var/lib/apt/lists/*
 
-# Download and extract Unbound source
+# Download and extract Unbound source with SHA256 verification
 WORKDIR /tmp
 RUN curl -sSL "https://nlnetlabs.nl/downloads/unbound/unbound-${UNBOUND_VERSION}.tar.gz" -o unbound.tar.gz && \
+    curl -sSL "https://nlnetlabs.nl/downloads/unbound/unbound-${UNBOUND_VERSION}.tar.gz.sha256" -o unbound.tar.gz.sha256 && \
+    echo "$(cat unbound.tar.gz.sha256)  unbound.tar.gz" | sha256sum -c - && \
     tar xzf unbound.tar.gz && \
     mv unbound-${UNBOUND_VERSION} unbound
 
@@ -70,7 +72,7 @@ RUN apt-get update && \
 
 # Create unbound user and group
 RUN groupadd -r -g 101 unbound && \
-    useradd -r -u 101 -g unbound -d /var/lib/unbound -s /sbin/nologin unbound
+    useradd -r -u 101 -g unbound -d /var/lib/unbound -s /usr/sbin/nologin unbound
 
 # Copy Unbound binaries from builder stage
 COPY --from=builder /tmp/install/usr/sbin/unbound /usr/sbin/unbound
@@ -92,7 +94,14 @@ RUN chown unbound:unbound /var/lib/unbound/root.hints && \
 
 # Generate/update the root trust anchor for DNSSEC validation
 # unbound-anchor will create or update the root.key file
-RUN unbound-anchor -a /var/lib/unbound/root.key || true && \
+# Note: unbound-anchor returns 1 if the anchor was updated, so we check for actual failure
+RUN unbound-anchor -a /var/lib/unbound/root.key; \
+    ANCHOR_STATUS=$?; \
+    if [ $ANCHOR_STATUS -ne 0 ] && [ $ANCHOR_STATUS -ne 1 ]; then \
+        echo "Error: unbound-anchor failed with status $ANCHOR_STATUS"; \
+        exit 1; \
+    fi && \
+    test -f /var/lib/unbound/root.key || (echo "Error: root.key was not created" && exit 1) && \
     chown unbound:unbound /var/lib/unbound/root.key && \
     chmod 644 /var/lib/unbound/root.key
 
