@@ -1,0 +1,35 @@
+services:
+  big-bear-unbound:
+    build: .
+    image: bigbeartechworld/big-bear-unbound:latest
+    # For production, pin to a specific version:
+    # image: bigbeartechworld/big-bear-unbound:1.24.2
+    container_name: big-bear-unbound
+    restart: unless-stopped
+    ports:
+      - "53:53/udp"   # DNS UDP
+      - "53:53/tcp"   # DNS TCP
+    # Optional: Mount custom configuration
+    # volumes:
+    #   - ./custom-unbound.conf:/etc/unbound/unbound.conf:ro
+    #   - big_bear_unbound_cache:/var/lib/unbound
+    healthcheck:
+      test: ["CMD", "dig", "+short", "+time=2", "+tries=1", "@127.0.0.1", "-p", "53", "nlnetlabs.nl"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    # Optional: Resource limits
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 256M
+    #       cpus: '0.5'
+    #     reservations:
+    #       memory: 128M
+    #       cpus: '0.25'
+
+# Optional: Persistent cache volume (uncomment if you want to persist DNS cache)
+# volumes:
+#   big_bear_unbound_cache:
+#     driver: local

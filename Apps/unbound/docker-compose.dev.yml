@@ -1,0 +1,22 @@
+services:
+  big-bear-unbound:
+    build: .
+    image: bigbeartechworld/big-bear-unbound:dev
+    container_name: big-bear-unbound-dev
+    restart: unless-stopped
+    ports:
+      - "5353:53/udp"   # DNS UDP (alternative port for dev)
+      - "5353:53/tcp"   # DNS TCP (alternative port for dev)
+    # Mount local config for development
+    volumes:
+      - ./unbound.conf:/etc/unbound/unbound.conf:ro
+      - ./root.hints:/var/lib/unbound/root.hints:ro
+    healthcheck:
+      test: ["CMD", "dig", "+short", "+time=2", "+tries=1", "@127.0.0.1", "-p", "53", "nlnetlabs.nl"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    # Development: Enable logging for debugging
+    environment:
+      - UNBOUND_DEBUG=1

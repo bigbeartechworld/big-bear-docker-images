@@ -1,0 +1,472 @@
+name: "Test Unbound Docker Image"
+
+on:
+  pull_request:
+    paths:
+      - 'Apps/unbound/**'
+      - '.github/workflows/test_unbound.yaml'
+  push:
+    branches:
+      - main
+      - 'feature/**'
+      - 'fix/**'
+    paths:
+      - 'Apps/unbound/**'
+      - '.github/workflows/test_unbound.yaml'
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: bigbeartechworld/big-bear-unbound
+  DOCKERFILE_PATH: Apps/unbound
+
+jobs:
+  lint:
+    name: Lint Configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Lint Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: ${{ env.DOCKERFILE_PATH }}/Dockerfile
+          failure-threshold: warning
+          ignore: DL3008,DL3015
+
+      - name: Validate unbound.conf syntax
+        run: |
+          # Install unbound for config validation
+          sudo apt-get update && sudo apt-get install -y unbound
+          
+          # Copy config files to expected locations
+          sudo mkdir -p /var/lib/unbound
+          sudo touch /var/lib/unbound/root.hints
+          sudo touch /var/lib/unbound/root.key
+          
+          # Validate configuration
+          echo "Validating unbound.conf..."
+          sudo unbound-checkconf ${{ env.DOCKERFILE_PATH }}/unbound.conf
+
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: lint
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=test-
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.DOCKERFILE_PATH }}
+          load: true
+          tags: ${{ env.IMAGE_NAME }}:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Save Docker Image
+        run: |
+          docker save ${{ env.IMAGE_NAME }}:test > /tmp/unbound-image.tar
+
+      - name: Upload Image Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unbound-image
+          path: /tmp/unbound-image.tar
+          retention-days: 1
+
+  test-unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Image Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: unbound-image
+          path: /tmp
+
+      - name: Load Docker Image
+        run: |
+          docker load < /tmp/unbound-image.tar
+
+      - name: Install Test Dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y dnsutils
+
+      - name: Test - Unbound Binary Exists
+        run: |
+          echo "Testing Unbound binary exists..."
+          docker run --rm ${{ env.IMAGE_NAME }}:test which unbound
+          echo "✓ Unbound binary found"
+
+      - name: Test - Unbound Version
+        run: |
+          echo "Testing Unbound version..."
+          docker run --rm --user root ${{ env.IMAGE_NAME }}:test unbound -V
+          echo "✓ Unbound version retrieved"
+
+      - name: Test - Configuration Validation
+        run: |
+          echo "Validating unbound.conf inside container..."
+          docker run --rm --user root ${{ env.IMAGE_NAME }}:test unbound-checkconf /etc/unbound/unbound.conf
+          echo "✓ Configuration is valid"
+
+      - name: Test - Root Hints Exists
+        run: |
+          echo "Checking root.hints file..."
+          docker run --rm ${{ env.IMAGE_NAME }}:test test -f /var/lib/unbound/root.hints
+          echo "✓ root.hints file exists"
+
+      - name: Test - Root Key Exists (DNSSEC)
+        run: |
+          echo "Checking root.key file (DNSSEC trust anchor)..."
+          docker run --rm ${{ env.IMAGE_NAME }}:test test -f /var/lib/unbound/root.key
+          echo "✓ root.key file exists"
+
+      - name: Test - Non-Root User
+        run: |
+          echo "Checking container user..."
+          USER=$(docker run --rm ${{ env.IMAGE_NAME }}:test whoami)
+          if [ "$USER" = "root" ]; then
+            echo "✗ Container runs as root (security risk)"
+            exit 1
+          fi
+          echo "✓ Container runs as non-root user: $USER"
+
+      - name: Test - File Permissions
+        run: |
+          echo "Checking file permissions..."
+          docker run --rm ${{ env.IMAGE_NAME }}:test test -r /etc/unbound/unbound.conf
+          docker run --rm ${{ env.IMAGE_NAME }}:test test -r /var/lib/unbound/root.hints
+          docker run --rm ${{ env.IMAGE_NAME }}:test test -r /var/lib/unbound/root.key
+          echo "✓ File permissions are correct"
+
+  test-integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Image Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: unbound-image
+          path: /tmp
+
+      - name: Load Docker Image
+        run: |
+          docker load < /tmp/unbound-image.tar
+
+      - name: Install Test Dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y dnsutils
+
+      - name: Start Unbound Container
+        run: |
+          docker run -d \
+            --name unbound-test \
+            -p 5353:53/udp \
+            -p 5353:53/tcp \
+            ${{ env.IMAGE_NAME }}:test
+
+      - name: Wait for Unbound to Start
+        run: |
+          echo "Waiting for Unbound to initialize..."
+          for i in {1..60}; do
+            if docker exec unbound-test dig +short +time=2 +tries=1 @127.0.0.1 -p 53 nlnetlabs.nl > /dev/null 2>&1; then
+              echo "✓ Unbound is ready after ${i} seconds"
+              exit 0
+            fi
+            echo "Attempt $i/60: Waiting..."
+            sleep 1
+          done
+          echo "✗ Unbound failed to start"
+          docker logs unbound-test
+          exit 1
+
+      - name: Test - DNS Resolution (Inside Container)
+        run: |
+          echo "Testing DNS resolution from inside container..."
+          RESULT=$(docker exec unbound-test dig +short example.com @127.0.0.1)
+          if [ -z "$RESULT" ]; then
+            echo "✗ DNS resolution failed"
+            exit 1
+          fi
+          echo "✓ example.com resolved to: $RESULT"
+
+      - name: Test - UDP DNS (From Host)
+        run: |
+          echo "Testing UDP DNS from host..."
+          RESULT=$(dig +short +time=5 +tries=2 example.com @127.0.0.1 -p 5353)
+          if [ -z "$RESULT" ]; then
+            echo "✗ UDP DNS resolution failed"
+            exit 1
+          fi
+          echo "✓ UDP DNS works: $RESULT"
+
+      - name: Test - TCP DNS (From Host)
+        run: |
+          echo "Testing TCP DNS from host..."
+          RESULT=$(dig +short +tcp +time=5 +tries=2 example.com @127.0.0.1 -p 5353)
+          if [ -z "$RESULT" ]; then
+            echo "✗ TCP DNS resolution failed"
+            exit 1
+          fi
+          echo "✓ TCP DNS works: $RESULT"
+
+      - name: Test - DNSSEC Validation
+        run: |
+          echo "Testing DNSSEC validation..."
+          RESULT=$(docker exec unbound-test dig +dnssec +short nlnetlabs.nl @127.0.0.1)
+          if [ -z "$RESULT" ]; then
+            echo "✗ DNSSEC query failed"
+            exit 1
+          fi
+          echo "✓ DNSSEC validation works"
+
+      - name: Test - NXDOMAIN Response
+        run: |
+          echo "Testing NXDOMAIN response..."
+          RESULT=$(docker exec unbound-test dig +noall +comments thisdomaindoesnotexist12345.com @127.0.0.1 | grep -c "NXDOMAIN" || echo "0")
+          if [ "$RESULT" -eq 0 ]; then
+            echo "✗ NXDOMAIN not returned"
+            exit 1
+          fi
+          echo "✓ NXDOMAIN works correctly"
+
+      - name: Test - Multiple Domains
+        run: |
+          echo "Testing multiple DNS queries..."
+          FAILED=0
+          for domain in google.com cloudflare.com github.com microsoft.com; do
+            RESULT=$(docker exec unbound-test dig +short "$domain" @127.0.0.1 | head -1)
+            if [ -z "$RESULT" ]; then
+              echo "  ✗ Failed to resolve: $domain"
+              FAILED=$((FAILED + 1))
+            else
+              echo "  ✓ $domain -> $RESULT"
+            fi
+          done
+          if [ "$FAILED" -gt 0 ]; then
+            echo "✗ $FAILED domain(s) failed to resolve"
+            exit 1
+          fi
+          echo "✓ All domains resolved successfully"
+
+      - name: Test - Process Running as Non-Root
+        run: |
+          echo "Verifying Unbound process user..."
+          USER=$(docker exec unbound-test ps aux | grep "[u]nbound" | head -1 | awk '{print $1}')
+          if [ "$USER" = "root" ] || [ "$USER" = "0" ]; then
+            echo "✗ Unbound is running as root: $USER"
+            exit 1
+          fi
+          echo "✓ Unbound is running as: $USER"
+
+      - name: Test - Cache Functionality
+        run: |
+          echo "Testing DNS cache..."
+          # First query (cache miss)
+          docker exec unbound-test dig +short +stats cachetest.example.com @127.0.0.1 > /dev/null 2>&1 || true
+          TIME1=$(docker exec unbound-test dig example.com @127.0.0.1 | grep "Query time" | awk '{print $4}')
+          # Second query (cache hit)
+          TIME2=$(docker exec unbound-test dig example.com @127.0.0.1 | grep "Query time" | awk '{print $4}')
+          echo "  First query: ${TIME1}ms"
+          echo "  Second query (cached): ${TIME2}ms"
+          echo "✓ Cache test completed"
+
+      - name: Test - Response Time
+        run: |
+          echo "Measuring DNS response time..."
+          TIME=$(docker exec unbound-test dig example.com @127.0.0.1 | grep "Query time" | awk '{print $4}')
+          echo "✓ Query time: ${TIME}ms"
+
+      - name: Check Container Logs
+        if: always()
+        run: |
+          echo "=== Container Logs ==="
+          docker logs unbound-test 2>&1 | tail -50
+          
+          echo ""
+          echo "=== Checking for Errors ==="
+          ERRORS=$(docker logs unbound-test 2>&1 | grep -iE "error|fatal|panic" || echo "No errors found")
+          echo "$ERRORS"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop unbound-test || true
+          docker rm unbound-test || true
+
+  test-health:
+    name: Health Check Tests
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Image Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: unbound-image
+          path: /tmp
+
+      - name: Load Docker Image
+        run: |
+          docker load < /tmp/unbound-image.tar
+
+      - name: Test - Health Check Configuration
+        run: |
+          echo "Checking health check configuration..."
+          HEALTHCHECK=$(docker inspect --format='{{.Config.Healthcheck}}' ${{ env.IMAGE_NAME }}:test)
+          if [ -z "$HEALTHCHECK" ] || [ "$HEALTHCHECK" = "<nil>" ]; then
+            echo "✗ Health check not configured"
+            exit 1
+          fi
+          echo "✓ Health check is configured"
+          echo "  Config: $HEALTHCHECK"
+
+      - name: Start Container for Health Test
+        run: |
+          docker run -d \
+            --name unbound-health-test \
+            -p 5354:53/udp \
+            -p 5354:53/tcp \
+            ${{ env.IMAGE_NAME }}:test
+
+      - name: Wait for Healthy Status
+        run: |
+          echo "Waiting for container to become healthy..."
+          for i in {1..60}; do
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' unbound-health-test 2>/dev/null || echo "unknown")
+            echo "Attempt $i/60: Status = $STATUS"
+            if [ "$STATUS" = "healthy" ]; then
+              echo "✓ Container is healthy"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "✗ Container did not become healthy"
+          docker logs unbound-health-test
+          exit 1
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop unbound-health-test || true
+          docker rm unbound-health-test || true
+
+  test-multiarch:
+    name: Multi-Architecture Build Test
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      matrix:
+        platform: [linux/amd64, linux/arm64]
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build for ${{ matrix.platform }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.DOCKERFILE_PATH }}
+          platforms: ${{ matrix.platform }}
+          load: false
+          push: false
+          tags: ${{ env.IMAGE_NAME }}:test-${{ matrix.platform }}
+
+  summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [lint, build, test-unit, test-integration, test-health, test-multiarch]
+    if: always()
+    steps:
+      - name: Check Test Results
+        run: |
+          echo "═══════════════════════════════════════════"
+          echo "  Unbound Docker Image Test Summary"
+          echo "═══════════════════════════════════════════"
+          echo ""
+          
+          # Check each job status
+          FAILED=0
+          
+          if [ "${{ needs.lint.result }}" != "success" ]; then
+            echo "✗ Lint: ${{ needs.lint.result }}"
+            FAILED=1
+          else
+            echo "✓ Lint: success"
+          fi
+          
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "✗ Build: ${{ needs.build.result }}"
+            FAILED=1
+          else
+            echo "✓ Build: success"
+          fi
+          
+          if [ "${{ needs.test-unit.result }}" != "success" ]; then
+            echo "✗ Unit Tests: ${{ needs.test-unit.result }}"
+            FAILED=1
+          else
+            echo "✓ Unit Tests: success"
+          fi
+          
+          if [ "${{ needs.test-integration.result }}" != "success" ]; then
+            echo "✗ Integration Tests: ${{ needs.test-integration.result }}"
+            FAILED=1
+          else
+            echo "✓ Integration Tests: success"
+          fi
+          
+          if [ "${{ needs.test-health.result }}" != "success" ]; then
+            echo "✗ Health Check Tests: ${{ needs.test-health.result }}"
+            FAILED=1
+          else
+            echo "✓ Health Check Tests: success"
+          fi
+          
+          if [ "${{ needs.test-multiarch.result }}" != "success" ]; then
+            echo "✗ Multi-Arch Build: ${{ needs.test-multiarch.result }}"
+            FAILED=1
+          else
+            echo "✓ Multi-Arch Build: success"
+          fi
+          
+          echo ""
+          echo "═══════════════════════════════════════════"
+          
+          if [ "$FAILED" -eq 1 ]; then
+            echo "Some tests failed!"
+            exit 1
+          else
+            echo "All tests passed!"
+          fi

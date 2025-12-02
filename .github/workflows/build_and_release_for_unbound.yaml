@@ -1,0 +1,286 @@
+name: "Build and release for unbound"
+
+on:
+  workflow_dispatch:
+    inputs:
+      unbound_version:
+        description: 'Unbound version tag (e.g., 1.24.2 or "latest" to fetch newest)'
+        required: false
+        default: 'latest'
+  schedule:
+    # Run weekly on Tuesdays at 3 AM UTC to check for new Unbound releases
+    - cron: '0 3 * * 2'
+  push:
+    branches:
+      - main
+    paths:
+      - 'Apps/unbound/**'
+      - '.github/workflows/build_and_release_for_unbound.yaml'
+
+env:
+  IMAGE_NAME: bigbeartechworld/big-bear-unbound
+  DOCKERFILE_PATH: Apps/unbound
+
+jobs:
+  check-unbound-release:
+    name: Check Unbound Latest Release
+    runs-on: ubuntu-latest
+    outputs:
+      unbound_version: ${{ steps.get_version.outputs.version }}
+      should_build: ${{ steps.check_build.outputs.should_build }}
+    steps:
+      - name: Get Latest Unbound Release
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ "${{ github.event.inputs.unbound_version }}" != "latest" ]; then
+            VERSION="${{ github.event.inputs.unbound_version }}"
+          else
+            # Get latest release tag from GitHub API (format: release-X.Y.Z)
+            RELEASE_TAG=$(curl -s https://api.github.com/repos/NLnetLabs/unbound/releases/latest | jq -r '.tag_name')
+            # Extract version number (remove "release-" prefix)
+            VERSION=$(echo "$RELEASE_TAG" | sed 's/^release-//')
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Unbound version: ${VERSION}"
+
+      - name: Check if Build Needed
+        id: check_build
+        run: |
+          # Always build on manual trigger or push
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] || [ "${{ github.event_name }}" == "push" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "Build triggered by ${{ github.event_name }}"
+          else
+            # For scheduled runs, check if the tag already exists in Docker Hub
+            VERSION="${{ steps.get_version.outputs.version }}"
+            TOKEN=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${{ env.IMAGE_NAME }}:pull" | jq -r '.token')
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${TOKEN}" "https://registry-1.docker.io/v2/${{ env.IMAGE_NAME }}/manifests/${VERSION}")
+            
+            if [ "$STATUS" == "200" ]; then
+              echo "should_build=false" >> "$GITHUB_OUTPUT"
+              echo "Tag ${VERSION} already exists, skipping build"
+            else
+              echo "should_build=true" >> "$GITHUB_OUTPUT"
+              echo "Tag ${VERSION} not found, will build"
+            fi
+          fi
+
+  build-and-push:
+    name: Build and Push Docker Image
+    needs: check-unbound-release
+    if: needs.check-unbound-release.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Update VERSION file
+        run: |
+          echo "${{ needs.check-unbound-release.outputs.unbound_version }}" > ${{ env.DOCKERFILE_PATH }}/VERSION
+
+      - name: Update config.json version
+        run: |
+          cd ${{ env.DOCKERFILE_PATH }}
+          jq '.version = "${{ needs.check-unbound-release.outputs.unbound_version }}"' config.json > config.json.tmp
+          mv config.json.tmp config.json
+
+      - name: Update root.hints
+        run: |
+          curl -sSL https://www.internic.net/domain/named.root -o ${{ env.DOCKERFILE_PATH }}/root.hints
+          echo "Root hints updated from InterNIC"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            # Always tag as 'latest' for the most recent build
+            type=raw,value=latest
+            # Tag with the specific Unbound version
+            type=raw,value=${{ needs.check-unbound-release.outputs.unbound_version }}
+            # Tag with git commit SHA for traceability
+            type=sha,prefix={{branch}}-
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.DOCKERFILE_PATH }}
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Update Docker Hub Description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ env.IMAGE_NAME }}
+          readme-filepath: ${{ env.DOCKERFILE_PATH }}/README.md
+
+  test-image:
+    name: Test Docker Image
+    needs: [check-unbound-release, build-and-push]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Pull Built Image
+        run: |
+          docker pull ${{ env.IMAGE_NAME }}:latest
+
+      - name: Start Unbound Container
+        run: |
+          docker run -d \
+            --name unbound-test \
+            -p 5353:53/udp \
+            -p 5353:53/tcp \
+            ${{ env.IMAGE_NAME }}:latest
+
+      - name: Wait for Unbound to Start
+        run: |
+          echo "Waiting for Unbound to start..."
+          sleep 10
+          for i in {1..30}; do
+            if docker exec unbound-test dig +short +time=2 +tries=1 @127.0.0.1 -p 53 nlnetlabs.nl > /dev/null 2>&1; then
+              echo "Unbound is ready!"
+              exit 0
+            fi
+            echo "Attempt $i/30: Unbound not ready yet..."
+            sleep 2
+          done
+          echo "Unbound failed to start"
+          docker logs unbound-test
+          exit 1
+
+      - name: Test DNS Resolution
+        run: |
+          # Test basic DNS resolution
+          echo "Testing DNS resolution..."
+          docker exec unbound-test dig +short example.com @127.0.0.1
+          
+          # Test DNSSEC validation
+          echo "Testing DNSSEC validation..."
+          docker exec unbound-test dig +dnssec +short nlnetlabs.nl @127.0.0.1
+
+      - name: Test from Host
+        run: |
+          # Install dig on the host
+          sudo apt-get update && sudo apt-get install -y dnsutils
+          
+          # Test DNS resolution from host
+          echo "Testing DNS resolution from host..."
+          dig +short example.com @127.0.0.1 -p 5353
+          
+          # Test TCP
+          echo "Testing TCP DNS..."
+          dig +short +tcp example.com @127.0.0.1 -p 5353
+
+      - name: Verify Non-Root User
+        run: |
+          USER=$(docker exec unbound-test ps aux | grep "unbound" | grep -v grep | head -1 | awk '{print $1}')
+          if [ "$USER" = "root" ] || [ "$USER" = "0" ]; then
+            echo "✗ Unbound is running as root user: $USER"
+            exit 1
+          else
+            echo "✓ Unbound is running as non-root user: $USER"
+          fi
+
+      - name: View Container Health
+        run: |
+          echo "Container health status:"
+          docker inspect --format='{{.State.Health.Status}}' unbound-test || echo "No healthcheck configured"
+          
+      - name: View Logs
+        if: always()
+        run: |
+          docker logs unbound-test
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop unbound-test || true
+          docker rm unbound-test || true
+
+  create-update-pr:
+    name: Create Update PR
+    needs: [check-unbound-release, build-and-push, test-image]
+    if: github.event_name == 'schedule' && needs.check-unbound-release.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Update VERSION file
+        run: |
+          echo "${{ needs.check-unbound-release.outputs.unbound_version }}" > ${{ env.DOCKERFILE_PATH }}/VERSION
+
+      - name: Update config.json version
+        run: |
+          cd ${{ env.DOCKERFILE_PATH }}
+          jq '.version = "${{ needs.check-unbound-release.outputs.unbound_version }}"' config.json > config.json.tmp
+          mv config.json.tmp config.json
+
+      - name: Update root.hints
+        run: |
+          curl -sSL https://www.internic.net/domain/named.root -o ${{ env.DOCKERFILE_PATH }}/root.hints
+          echo "Root hints updated from InterNIC"
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: |
+            chore(unbound): update to version ${{ needs.check-unbound-release.outputs.unbound_version }}
+          branch: bot/unbound-update-${{ needs.check-unbound-release.outputs.unbound_version }}
+          title: |
+            chore(unbound): update to version ${{ needs.check-unbound-release.outputs.unbound_version }}
+          body: |
+            ## Unbound Update
+            
+            This PR updates the Unbound Docker image to version `${{ needs.check-unbound-release.outputs.unbound_version }}`.
+            
+            ### Changes
+            - Updated VERSION file
+            - Updated config.json version
+            - Updated root.hints from InterNIC
+            
+            ### Docker Images Built
+            - `${{ env.IMAGE_NAME }}:latest`
+            - `${{ env.IMAGE_NAME }}:${{ needs.check-unbound-release.outputs.unbound_version }}`
+            
+            ### References
+            - [Unbound Release Notes](https://github.com/NLnetLabs/unbound/releases/tag/release-${{ needs.check-unbound-release.outputs.unbound_version }})
+            - [Unbound Download Page](https://nlnetlabs.nl/projects/unbound/download/)
+            
+            ---
+            *This PR was automatically created by the Unbound update workflow.*
+          labels: |
+            bot
+            unbound
+            update

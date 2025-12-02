@@ -1,0 +1,41 @@
+services:
+  big-bear-unbound:
+    image: bigbeartechworld/big-bear-unbound:1.24.2
+    container_name: big-bear-unbound
+    restart: unless-stopped
+    ports:
+      - "53:53/udp"   # DNS UDP
+      - "53:53/tcp"   # DNS TCP
+    # Optional: Mount custom configuration
+    # volumes:
+    #   - ./custom-unbound.conf:/etc/unbound/unbound.conf:ro
+    #   - big_bear_unbound_cache:/var/lib/unbound
+    healthcheck:
+      test: ["CMD", "dig", "+short", "+time=2", "+tries=1", "@127.0.0.1", "-p", "53", "nlnetlabs.nl"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    # Production: Resource limits and security
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+
+volumes:
+  big_bear_unbound_cache:
+    driver: local
