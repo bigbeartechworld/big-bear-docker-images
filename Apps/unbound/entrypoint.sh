@@ -10,6 +10,13 @@ set -e
 # 3. Starts Unbound (which will drop privileges to 'unbound' user after binding)
 # ==============================================================================
 
+# If the first argument is a command (not a flag), execute it directly
+# This allows running commands like: docker run image unbound -V
+# or: docker run image which unbound
+if [ "${1#-}" = "$1" ] && [ -n "$1" ]; then
+    exec "$@"
+fi
+
 # Update root trust anchor for DNSSEC validation
 # unbound-anchor returns 1 if the anchor was updated, which is not an error
 echo "Updating DNSSEC root trust anchor..."
@@ -27,4 +34,4 @@ fi
 
 echo "Starting Unbound DNS resolver..."
 # Execute Unbound - it will bind to port 53 as root, then drop to 'unbound' user
-exec unbound -d -c /etc/unbound/unbound.conf "$@"
+exec unbound -d -c /etc/unbound/unbound.conf
