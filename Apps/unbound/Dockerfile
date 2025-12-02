@@ -3,6 +3,9 @@
 # ==============================================================================
 FROM debian:bookworm-slim AS builder
 
+# Set shell options for better error handling in pipes
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 # Unbound version to build
 ARG UNBOUND_VERSION=1.24.2
 
