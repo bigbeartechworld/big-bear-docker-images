@@ -5,9 +5,10 @@ set -e
 # Unbound Docker Entrypoint Script
 # ==============================================================================
 # This script handles proper initialization of Unbound in a Docker container:
-# 1. Updates DNSSEC root trust anchor
-# 2. Validates configuration
-# 3. Starts Unbound (which will drop privileges to 'unbound' user after binding)
+# 1. Ensures root.hints file exists (downloads if missing)
+# 2. Updates DNSSEC root trust anchor
+# 3. Validates configuration
+# 4. Starts Unbound (which will drop privileges to 'unbound' user after binding)
 # ==============================================================================
 
 # If the first argument is a command (not a flag), execute it directly
@@ -15,6 +16,20 @@ set -e
 # or: docker run image which unbound
 if [ "${1#-}" = "$1" ] && [ -n "$1" ]; then
     exec "$@"
+fi
+
+# Ensure root.hints file exists (may be missing if /var/lib/unbound is mounted)
+ROOT_HINTS="/var/lib/unbound/root.hints"
+if [ ! -f "$ROOT_HINTS" ]; then
+    echo "Root hints file not found, downloading from InterNIC..."
+    if curl -sSL https://www.internic.net/domain/named.root -o "$ROOT_HINTS"; then
+        chown unbound:unbound "$ROOT_HINTS" 2>/dev/null || true
+        chmod 644 "$ROOT_HINTS"
+        echo "Root hints downloaded successfully"
+    else
+        echo "ERROR: Failed to download root hints from InterNIC"
+        exit 1
+    fi
 fi
 
 # Update root trust anchor for DNSSEC validation
