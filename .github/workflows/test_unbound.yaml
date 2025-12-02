@@ -389,7 +389,7 @@ jobs:
           platforms: ${{ matrix.platform }}
           load: false
           push: false
-          tags: ${{ env.IMAGE_NAME }}:test-${{ matrix.platform }}
+          tags: ${{ env.IMAGE_NAME }}:test-${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
 
   summary:
     name: Test Summary
