@@ -129,14 +129,6 @@ jobs:
           docker run --rm ${{ env.IMAGE_NAME }}:test test -f /var/lib/unbound/root.key
           echo "✓ root.key file exists"
 
-      - name: Test - Privilege Model
-        run: |
-          echo "Checking container privilege model..."
-          # Container starts as root to bind to port 53, then Unbound drops privileges
-          # This is the standard approach for DNS servers - the entrypoint runs as root,
-          # but Unbound drops to the 'unbound' user via the username: config directive
-          echo "✓ Container uses privilege-drop model (root -> unbound)"
-
       - name: Test - File Permissions
         run: |
           echo "Checking file permissions..."
