@@ -42,7 +42,7 @@ RUN ./configure \
         --enable-tfo-server \
         --disable-rpath \
         --disable-static \
-    && make -j$(nproc) \
+    && make -j"$(nproc)" \
     && make install DESTDIR=/tmp/install
 
 # ==============================================================================
