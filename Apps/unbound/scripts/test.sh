@@ -31,13 +31,13 @@ echo ""
 
 # Function to print test results
 print_test() {
-    ((TESTS_TOTAL++))
+    TESTS_TOTAL=$((TESTS_TOTAL + 1))
     if [ $1 -eq 0 ]; then
         echo -e "${GREEN}✓${NC} $2"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED + 1))
     else
         echo -e "${RED}✗${NC} $2"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED + 1))
         if [ -n "$3" ]; then
             echo -e "  ${RED}Error: $3${NC}"
         fi
@@ -274,7 +274,7 @@ DOMAINS_OK=0
 for domain in google.com cloudflare.com github.com; do
     RESULT=$(docker exec "$CONTAINER_NAME" dig +short "$domain" @127.0.0.1 2>/dev/null | head -1 || echo "")
     if [ -n "$RESULT" ]; then
-        ((DOMAINS_OK++))
+        DOMAINS_OK=$((DOMAINS_OK + 1))
     fi
 done
 if [ "$DOMAINS_OK" -eq 3 ]; then
