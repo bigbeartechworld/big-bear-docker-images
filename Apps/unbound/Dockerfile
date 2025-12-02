@@ -113,15 +113,16 @@ COPY ./unbound.conf /etc/unbound/unbound.conf
 RUN chown root:unbound /etc/unbound/unbound.conf && \
     chmod 644 /etc/unbound/unbound.conf
 
+# Copy and set permissions for the entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Expose DNS ports (UDP and TCP)
 EXPOSE 53/udp 53/tcp
 
-# Run as non-root user for security
-USER unbound
-
-# Start Unbound with the configuration file when the container runs
-# Using -d flag to not daemonize (required for Docker)
-CMD ["unbound", "-d", "-c", "/etc/unbound/unbound.conf"]
+# Start as root - Unbound will drop privileges after binding to port 53
+# This is the standard approach for DNS servers that need to bind to privileged ports
+ENTRYPOINT ["/entrypoint.sh"]
 
 # Healthcheck for Unbound - verify DNS resolution is working
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
