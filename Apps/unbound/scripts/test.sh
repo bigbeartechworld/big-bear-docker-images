@@ -136,17 +136,8 @@ fi
 
 print_section "Security Tests"
 
-# Test 8: Verify container runs as non-root user
-echo -e "${YELLOW}Test 8: Checking non-root user...${NC}"
-CONTAINER_USER=$(docker run --rm "${IMAGE_NAME}:${IMAGE_TAG}" whoami 2>/dev/null || echo "unknown")
-if [ "$CONTAINER_USER" != "root" ] && [ "$CONTAINER_USER" != "unknown" ]; then
-    print_test 0 "Container runs as non-root user ($CONTAINER_USER)"
-else
-    print_test 1 "Container runs as root (security risk)"
-fi
-
-# Test 9: Check file permissions
-echo -e "${YELLOW}Test 9: Checking file permissions...${NC}"
+# Test 8: Check file permissions
+echo -e "${YELLOW}Test 8: Checking file permissions...${NC}"
 PERMS_OK=true
 # Check config is readable
 if ! docker run --rm "${IMAGE_NAME}:${IMAGE_TAG}" test -r /etc/unbound/unbound.conf; then
@@ -164,8 +155,8 @@ fi
 
 print_section "Runtime Tests"
 
-# Test 10: Start the container
-echo -e "${YELLOW}Test 10: Starting Unbound container...${NC}"
+# Test 9: Start the container
+echo -e "${YELLOW}Test 9: Starting Unbound container...${NC}"
 if docker run -d \
     --name "$CONTAINER_NAME" \
     -p "${HOST_PORT}:53/udp" \
@@ -194,29 +185,40 @@ if [ "$READY" = "false" ]; then
     exit 1
 fi
 
-# Test 11: Check container is running
-echo -e "${YELLOW}Test 11: Verifying container status...${NC}"
+# Test 10: Check container is running
+echo -e "${YELLOW}Test 10: Verifying container status...${NC}"
 if docker ps | grep -q "$CONTAINER_NAME"; then
     print_test 0 "Container is running"
 else
     print_test 1 "Container is not running"
 fi
 
-# Test 12: Verify Unbound process is running as correct user
-echo -e "${YELLOW}Test 12: Checking Unbound process user...${NC}"
-PROCESS_USER=$(docker exec "$CONTAINER_NAME" ps aux 2>/dev/null | grep "[u]nbound" | head -1 | awk '{print $1}' || echo "unknown")
-if [ "$PROCESS_USER" = "unbound" ] || [ "$PROCESS_USER" = "101" ]; then
-    print_test 0 "Unbound process running as user: $PROCESS_USER"
-elif [ "$PROCESS_USER" = "root" ] || [ "$PROCESS_USER" = "0" ]; then
-    print_test 1 "Unbound process running as root (security issue)"
+# Test 11: Verify Unbound process is running as correct user (CRITICAL SECURITY CHECK)
+echo -e "${YELLOW}Test 11: Checking Unbound process user...${NC}"
+# Use /proc to check the UID since ps may not be available in slim images
+PROCESS_UID=$(docker exec "$CONTAINER_NAME" cat /proc/1/status 2>/dev/null | grep "^Uid:" | awk '{print $2}' || echo "unknown")
+if [ "$PROCESS_UID" = "101" ]; then
+    print_test 0 "Unbound process (PID 1) running as UID $PROCESS_UID (unbound user) ✓"
+elif [ "$PROCESS_UID" = "0" ]; then
+    print_test 1 "SECURITY ISSUE: Unbound process running as root (UID 0)"
+elif [ "$PROCESS_UID" = "unknown" ]; then
+    # Fallback: try ps if available
+    PROCESS_USER=$(docker exec "$CONTAINER_NAME" ps aux 2>/dev/null | grep "[u]nbound" | head -1 | awk '{print $1}' || echo "unknown")
+    if [ "$PROCESS_USER" = "unbound" ] || [ "$PROCESS_USER" = "101" ]; then
+        print_test 0 "Unbound process running as user: $PROCESS_USER"
+    elif [ "$PROCESS_USER" = "root" ] || [ "$PROCESS_USER" = "0" ]; then
+        print_test 1 "SECURITY ISSUE: Unbound process running as root"
+    else
+        print_test 1 "Could not determine Unbound process user"
+    fi
 else
-    print_test 0 "Unbound process running as: $PROCESS_USER"
+    print_test 0 "Unbound process running as UID: $PROCESS_UID"
 fi
 
 print_section "DNS Resolution Tests"
 
-# Test 13: Test basic DNS resolution (from inside container)
-echo -e "${YELLOW}Test 13: Testing DNS resolution (inside container)...${NC}"
+# Test 12: Test basic DNS resolution (from inside container)
+echo -e "${YELLOW}Test 12: Testing DNS resolution (inside container)...${NC}"
 RESULT=$(docker exec "$CONTAINER_NAME" dig +short example.com @127.0.0.1 2>/dev/null || echo "")
 if [ -n "$RESULT" ]; then
     print_test 0 "DNS resolution works (example.com -> $RESULT)"
@@ -224,8 +226,8 @@ else
     print_test 1 "DNS resolution failed"
 fi
 
-# Test 14: Test UDP DNS from host
-echo -e "${YELLOW}Test 14: Testing UDP DNS from host...${NC}"
+# Test 13: Test UDP DNS from host
+echo -e "${YELLOW}Test 13: Testing UDP DNS from host...${NC}"
 if command -v dig > /dev/null 2>&1; then
     RESULT=$(dig +short +time=5 +tries=2 example.com @127.0.0.1 -p "$HOST_PORT" 2>/dev/null || echo "")
     if [ -n "$RESULT" ]; then
@@ -237,8 +239,8 @@ else
     echo -e "  ${YELLOW}Skipped: dig not installed on host${NC}"
 fi
 
-# Test 15: Test TCP DNS from host
-echo -e "${YELLOW}Test 15: Testing TCP DNS from host...${NC}"
+# Test 14: Test TCP DNS from host
+echo -e "${YELLOW}Test 14: Testing TCP DNS from host...${NC}"
 if command -v dig > /dev/null 2>&1; then
     RESULT=$(dig +short +tcp +time=5 +tries=2 example.com @127.0.0.1 -p "$HOST_PORT" 2>/dev/null || echo "")
     if [ -n "$RESULT" ]; then
@@ -250,8 +252,8 @@ else
     echo -e "  ${YELLOW}Skipped: dig not installed on host${NC}"
 fi
 
-# Test 16: Test DNSSEC validation
-echo -e "${YELLOW}Test 16: Testing DNSSEC validation...${NC}"
+# Test 15: Test DNSSEC validation
+echo -e "${YELLOW}Test 15: Testing DNSSEC validation...${NC}"
 DNSSEC_RESULT=$(docker exec "$CONTAINER_NAME" dig +dnssec +short nlnetlabs.nl @127.0.0.1 2>/dev/null || echo "")
 if [ -n "$DNSSEC_RESULT" ]; then
     print_test 0 "DNSSEC query returned results"
@@ -259,8 +261,8 @@ else
     print_test 1 "DNSSEC query failed"
 fi
 
-# Test 17: Test NXDOMAIN response
-echo -e "${YELLOW}Test 17: Testing NXDOMAIN response...${NC}"
+# Test 16: Test NXDOMAIN response
+echo -e "${YELLOW}Test 16: Testing NXDOMAIN response...${NC}"
 NXDOMAIN_STATUS=$(docker exec "$CONTAINER_NAME" dig +noall +comments thisdomaindoesnotexist12345.com @127.0.0.1 2>/dev/null | grep -c "NXDOMAIN" || echo "0")
 if [ "$NXDOMAIN_STATUS" -gt 0 ]; then
     print_test 0 "NXDOMAIN response works correctly"
@@ -268,8 +270,8 @@ else
     print_test 1 "NXDOMAIN response not received"
 fi
 
-# Test 18: Test multiple domains in parallel
-echo -e "${YELLOW}Test 18: Testing multiple DNS queries...${NC}"
+# Test 17: Test multiple domains in parallel
+echo -e "${YELLOW}Test 17: Testing multiple DNS queries...${NC}"
 DOMAINS_OK=0
 for domain in google.com cloudflare.com github.com; do
     RESULT=$(docker exec "$CONTAINER_NAME" dig +short "$domain" @127.0.0.1 2>/dev/null | head -1 || echo "")
@@ -285,8 +287,8 @@ fi
 
 print_section "Performance Tests"
 
-# Test 19: Test response time
-echo -e "${YELLOW}Test 19: Measuring response time...${NC}"
+# Test 18: Test response time
+echo -e "${YELLOW}Test 18: Measuring response time...${NC}"
 QUERY_TIME=$(docker exec "$CONTAINER_NAME" dig example.com @127.0.0.1 2>/dev/null | grep "Query time" | awk '{print $4}' || echo "unknown")
 if [ "$QUERY_TIME" != "unknown" ]; then
     print_test 0 "Query time: ${QUERY_TIME}ms"
@@ -294,8 +296,8 @@ else
     print_test 1 "Could not measure query time"
 fi
 
-# Test 20: Test cache (second query should be faster)
-echo -e "${YELLOW}Test 20: Testing cache functionality...${NC}"
+# Test 19: Test cache (second query should be faster)
+echo -e "${YELLOW}Test 19: Testing cache functionality...${NC}"
 # First query (should miss cache)
 docker exec "$CONTAINER_NAME" dig +short uncachedtest.example.com @127.0.0.1 > /dev/null 2>&1 || true
 TIME1=$(docker exec "$CONTAINER_NAME" dig example.com @127.0.0.1 2>/dev/null | grep "Query time" | awk '{print $4}' || echo "0")
@@ -309,8 +311,8 @@ fi
 
 print_section "Health Check Tests"
 
-# Test 21: Verify health check is configured
-echo -e "${YELLOW}Test 21: Checking health check configuration...${NC}"
+# Test 20: Verify health check is configured
+echo -e "${YELLOW}Test 20: Checking health check configuration...${NC}"
 HEALTHCHECK=$(docker inspect --format='{{.Config.Healthcheck}}' "${IMAGE_NAME}:${IMAGE_TAG}" 2>/dev/null || echo "")
 if [ -n "$HEALTHCHECK" ] && [ "$HEALTHCHECK" != "<nil>" ]; then
     print_test 0 "Health check is configured"
@@ -318,8 +320,8 @@ else
     print_test 1 "Health check not configured"
 fi
 
-# Test 22: Check container health status
-echo -e "${YELLOW}Test 22: Checking container health status...${NC}"
+# Test 21: Check container health status
+echo -e "${YELLOW}Test 21: Checking container health status...${NC}"
 sleep 5  # Wait for health check to run
 HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' "$CONTAINER_NAME" 2>/dev/null || echo "unknown")
 if [ "$HEALTH_STATUS" = "healthy" ]; then
@@ -332,9 +334,10 @@ fi
 
 print_section "Logs & Diagnostics"
 
-# Test 23: Check for errors in logs
-echo -e "${YELLOW}Test 23: Checking logs for errors...${NC}"
-ERRORS=$(docker logs "$CONTAINER_NAME" 2>&1 | grep -iE "error|fatal|panic" | head -5 || echo "")
+# Test 22: Check for errors in logs
+echo -e "${YELLOW}Test 22: Checking logs for errors...${NC}"
+# Filter out false positives like "no errors" from unbound-checkconf
+ERRORS=$(docker logs "$CONTAINER_NAME" 2>&1 | grep -iE "error|fatal|panic" | grep -v "no errors" | head -5 || echo "")
 if [ -z "$ERRORS" ]; then
     print_test 0 "No errors found in logs"
 else
@@ -342,8 +345,8 @@ else
     echo "$ERRORS"
 fi
 
-# Test 24: Check memory usage
-echo -e "${YELLOW}Test 24: Checking resource usage...${NC}"
+# Test 23: Check memory usage
+echo -e "${YELLOW}Test 23: Checking resource usage...${NC}"
 STATS=$(docker stats "$CONTAINER_NAME" --no-stream --format "{{.MemUsage}}" 2>/dev/null || echo "unknown")
 if [ "$STATS" != "unknown" ]; then
     print_test 0 "Memory usage: $STATS"

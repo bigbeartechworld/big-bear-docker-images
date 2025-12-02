@@ -285,12 +285,16 @@ jobs:
 
       - name: Verify Non-Root User
         run: |
-          USER=$(docker exec unbound-test ps aux | grep "unbound" | grep -v grep | head -1 | awk '{print $1}')
-          if [ "$USER" = "root" ] || [ "$USER" = "0" ]; then
-            echo "✗ Unbound is running as root user: $USER"
+          # Use /proc to check UID since ps may not be available in slim images
+          PROCESS_UID=$(docker exec unbound-test cat /proc/1/status | grep "^Uid:" | awk '{print $2}')
+          echo "Unbound process UID: $PROCESS_UID"
+          if [ "$PROCESS_UID" = "0" ]; then
+            echo "✗ SECURITY ISSUE: Unbound is running as root (UID 0)"
             exit 1
+          elif [ "$PROCESS_UID" = "101" ]; then
+            echo "✓ Unbound is running as non-root user (UID 101 = unbound)"
           else
-            echo "✓ Unbound is running as non-root user: $USER"
+            echo "✓ Unbound is running as non-root user (UID $PROCESS_UID)"
           fi
 
       - name: View Container Health
