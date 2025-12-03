@@ -1,0 +1,29 @@
+services:
+  big-bear-pluton:
+    build: ..
+    image: bigbeartechworld/big-bear-pluton:latest
+    container_name: big-bear-pluton
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      SECRET: ${SECRET:-CHANGE_ME_SECRET_KEY_123}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-CHANGE_ME_ENCRYPTION_KEY_123}
+      APIKEY: ${APIKEY:-CHANGE_ME_API_KEY_123}
+      USER_NAME: ${USER_NAME:-admin}
+      USER_PASSWORD: ${USER_PASSWORD:-password}
+      APP_TITLE: ${APP_TITLE:-Pluton}
+      APP_URL: ${APP_URL:-http://localhost:5173}
+      SERVER_PORT: ${SERVER_PORT:-5173}
+    volumes:
+      - big_bear_pluton_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5173/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  big_bear_pluton_data:
+    driver: local
