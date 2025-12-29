@@ -1,0 +1,166 @@
+name: "Test Nextcloud with SMBClient Docker Image"
+
+on:
+  pull_request:
+    paths:
+      - 'Apps/nextcloud-with-smbclient/**'
+      - '.github/workflows/test_nextcloud_with_smbclient.yaml'
+  push:
+    branches:
+      - main
+      - 'feature/**'
+      - 'fix/**'
+    paths:
+      - 'Apps/nextcloud-with-smbclient/**'
+      - '.github/workflows/test_nextcloud_with_smbclient.yaml'
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: bigbeartechworld/big-bear-nextcloud-with-smbclient
+  DOCKERFILE_PATH: Apps/nextcloud-with-smbclient
+
+jobs:
+  lint:
+    name: Lint Dockerfile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Lint Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: ${{ env.DOCKERFILE_PATH }}/Dockerfile
+          failure-threshold: warning
+          ignore: DL3008,DL3015,DL3018
+
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform:
+          - linux/amd64
+          - linux/arm64
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image for ${{ matrix.platform }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.DOCKERFILE_PATH }}
+          platforms: ${{ matrix.platform }}
+          load: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  test:
+    name: Test Image Functionality
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Test Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.DOCKERFILE_PATH }}
+          load: true
+          tags: ${{ env.IMAGE_NAME }}:test
+
+      - name: Test - SMBClient Extension Installed
+        run: |
+          echo "Testing if smbclient PHP extension is loaded..."
+          docker run --rm ${{ env.IMAGE_NAME }}:test php -m | grep -q 'smbclient'
+          if [ $? -eq 0 ]; then
+            echo "✅ SMBClient extension is loaded"
+          else
+            echo "❌ SMBClient extension is NOT loaded"
+            exit 1
+          fi
+
+      - name: Test - SMBClient Extension Enabled
+        run: |
+          echo "Verifying smbclient extension is enabled in PHP configuration..."
+          docker run --rm ${{ env.IMAGE_NAME }}:test php -i | grep -q 'smbclient'
+          if [ $? -eq 0 ]; then
+            echo "✅ SMBClient extension is enabled in PHP"
+          else
+            echo "❌ SMBClient extension is NOT enabled in PHP"
+            exit 1
+          fi
+
+      - name: Test - Apache Running
+        run: |
+          echo "Testing if Apache is properly configured..."
+          CONTAINER_ID=$(docker run -d ${{ env.IMAGE_NAME }}:test)
+          sleep 10
+
+          # Check if Apache is running
+          docker exec $CONTAINER_ID pgrep apache2
+          if [ $? -eq 0 ]; then
+            echo "✅ Apache is running"
+          else
+            echo "❌ Apache is NOT running"
+            docker stop $CONTAINER_ID
+            exit 1
+          fi
+
+          docker stop $CONTAINER_ID
+
+      - name: Test - Nextcloud Installation
+        run: |
+          echo "Testing basic Nextcloud setup..."
+          CONTAINER_ID=$(docker run -d -e SQLITE_DATABASE=nextcloud -e NEXTCLOUD_ADMIN_USER=admin -e NEXTCLOUD_ADMIN_PASSWORD=admin ${{ env.IMAGE_NAME }}:test)
+          sleep 30
+
+          # Check if Nextcloud responds
+          STATUS=$(docker exec $CONTAINER_ID curl -s -o /dev/null -w "%{http_code}" http://localhost/status.php)
+
+          if [ "$STATUS" == "200" ]; then
+            echo "✅ Nextcloud is responding (HTTP $STATUS)"
+          else
+            echo "❌ Nextcloud is NOT responding properly (HTTP $STATUS)"
+            docker logs $CONTAINER_ID
+            docker stop $CONTAINER_ID
+            exit 1
+          fi
+
+          docker stop $CONTAINER_ID
+
+      - name: Test - Required PHP Extensions
+        run: |
+          echo "Checking for required PHP extensions..."
+          EXTENSIONS="smbclient gd curl zip xml mbstring intl"
+
+          for ext in $EXTENSIONS; do
+            docker run --rm ${{ env.IMAGE_NAME }}:test php -m | grep -q "$ext"
+            if [ $? -eq 0 ]; then
+              echo "✅ PHP extension '$ext' is loaded"
+            else
+              echo "❌ PHP extension '$ext' is NOT loaded"
+              exit 1
+            fi
+          done
+
+      - name: Test Summary
+        if: success()
+        run: |
+          echo "## ✅ All Tests Passed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The following tests were successful:" >> $GITHUB_STEP_SUMMARY
+          echo "- SMBClient PHP extension is installed and loaded" >> $GITHUB_STEP_SUMMARY
+          echo "- Apache web server is running correctly" >> $GITHUB_STEP_SUMMARY
+          echo "- Nextcloud installation is functional" >> $GITHUB_STEP_SUMMARY
+          echo "- All required PHP extensions are present" >> $GITHUB_STEP_SUMMARY
