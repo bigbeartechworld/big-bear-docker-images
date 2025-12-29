@@ -207,12 +207,14 @@ jobs:
             exit 1
           fi
 
-      - name: Test - ncdu Process Running
+      - name: Test - gotty Running with ncdu
         run: |
-          if docker exec ncdu-test pgrep ncdu > /dev/null; then
-            echo "✓ ncdu process is running"
+          # ncdu runs on-demand via gotty when clients connect, not continuously
+          # Check that gotty is configured to run ncdu
+          if docker exec ncdu-test ps aux | grep -q "[g]otty.*ncdu"; then
+            echo "✓ gotty is configured to run ncdu"
           else
-            echo "✗ ncdu process not found"
+            echo "✗ gotty not configured correctly"
             docker exec ncdu-test ps aux
             exit 1
           fi
