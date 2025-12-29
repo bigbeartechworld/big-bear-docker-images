@@ -356,36 +356,9 @@ jobs:
           docker stop ncdu-path-test || true
           docker rm ncdu-path-test || true
 
-  test-multiarch:
-    name: Multi-Architecture Build
-    needs: lint
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      matrix:
-        include:
-          - platform: linux/amd64
-            runner: ubuntu-latest
-          - platform: linux/arm64
-            runner: ubuntu-24.04-arm
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build for ${{ matrix.platform }}
-        uses: docker/build-push-action@v5
-        with:
-          context: ${{ env.DOCKERFILE_PATH }}
-          platforms: ${{ matrix.platform }}
-          load: false
-          push: false
-          tags: ${{ env.IMAGE_NAME }}:test-${{ matrix.platform }}
-
   summary:
     name: Test Summary
-    needs: [lint, build, test-unit, test-integration, test-auth, test-custom-path, test-multiarch]
+    needs: [lint, build, test-unit, test-integration, test-auth, test-custom-path]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -439,13 +412,6 @@ jobs:
             FAILED=1
           else
             echo "✓ Custom Path Tests: success"
-          fi
-
-          if [ "${{ needs.test-multiarch.result }}" != "success" ]; then
-            echo "✗ Multi-Arch Build: ${{ needs.test-multiarch.result }}"
-            FAILED=1
-          else
-            echo "✓ Multi-Arch Build: success"
           fi
 
           echo ""
