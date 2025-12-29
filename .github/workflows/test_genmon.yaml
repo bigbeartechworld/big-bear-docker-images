@@ -33,7 +33,7 @@ jobs:
         with:
           dockerfile: Apps/genmon/Dockerfile
           failure-threshold: warning
-          ignore: DL3008,DL3015,DL3018
+          ignore: DL3008
 
   build:
     name: Build Docker Image
