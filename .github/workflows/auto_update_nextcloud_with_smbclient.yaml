@@ -35,29 +35,74 @@ jobs:
       - name: Get Current Version
         id: current_version
         run: |
+          set -euo pipefail
+
           # Get current Nextcloud version from Dockerfile
-          CURRENT_VERSION=$(grep -oP 'FROM nextcloud:\K[0-9.]+(?=-apache)' ${{ env.DOCKERFILE_PATH }}/Dockerfile)
+          echo "Extracting version from: ${{ env.DOCKERFILE_PATH }}/Dockerfile"
+
+          CURRENT_VERSION=$(grep -oP 'FROM nextcloud:\K[0-9.]+(?=-apache)' "${{ env.DOCKERFILE_PATH }}/Dockerfile" || true)
+
+          # Validate extraction succeeded
+          if [ -z "$CURRENT_VERSION" ]; then
+            echo "❌ ERROR: Failed to extract current version from Dockerfile"
+            echo "Dockerfile path: ${{ env.DOCKERFILE_PATH }}/Dockerfile"
+            echo "Dockerfile content:"
+            cat "${{ env.DOCKERFILE_PATH }}/Dockerfile"
+            exit 1
+          fi
+
+          # Validate version format
+          if ! [[ "$CURRENT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ ERROR: Extracted version has invalid format: '$CURRENT_VERSION'"
+            exit 1
+          fi
+
           echo "version=${CURRENT_VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Current Nextcloud version: ${CURRENT_VERSION}"
+          echo "✅ Current Nextcloud version: ${CURRENT_VERSION}"
 
       - name: Get Latest Version
         id: latest_version
         run: |
-          # Get latest Nextcloud version from Docker Hub
-          # Query Docker Hub API for official nextcloud image tags
-          LATEST_TAG=$(curl -s "https://registry.hub.docker.com/v2/repositories/library/nextcloud/tags?page_size=100" | \
+          set -euo pipefail
+
+          echo "Fetching latest Nextcloud version from Docker Hub..."
+
+          # Fetch tags from Docker Hub API with error handling
+          API_RESPONSE=$(curl -sSf "https://registry.hub.docker.com/v2/repositories/library/nextcloud/tags?page_size=100" || {
+            echo "❌ ERROR: Failed to fetch tags from Docker Hub API"
+            exit 1
+          })
+
+          # Parse and filter tags
+          LATEST_TAG=$(echo "$API_RESPONSE" | \
             jq -r '.results[].name' | \
             grep -E '^[0-9]+\.[0-9]+\.[0-9]+-apache$' | \
             sed 's/-apache$//' | \
             sort -V | \
             tail -n 1)
 
+          # Validate we got a result
+          if [ -z "$LATEST_TAG" ]; then
+            echo "❌ ERROR: Failed to extract latest version from Docker Hub"
+            echo "API Response (first 500 chars):"
+            echo "$API_RESPONSE" | head -c 500
+            exit 1
+          fi
+
+          # Validate version format
+          if ! [[ "$LATEST_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ ERROR: Latest version has invalid format: '$LATEST_TAG'"
+            exit 1
+          fi
+
           echo "version=${LATEST_TAG}" >> "$GITHUB_OUTPUT"
-          echo "Latest Nextcloud version: ${LATEST_TAG}"
+          echo "✅ Latest Nextcloud version: ${LATEST_TAG}"
 
       - name: Compare Versions
         id: compare
         run: |
+          set -euo pipefail
+
           CURRENT_VERSION="${{ steps.current_version.outputs.version }}"
           LATEST_VERSION="${{ steps.latest_version.outputs.version }}"
           FORCE="${{ github.event.inputs.force_check }}"
@@ -74,20 +119,61 @@ jobs:
 
           # Check if Docker image tag already exists for latest version
           if [ "$UPDATE_NEEDED" == "true" ]; then
-            TOKEN=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${{ env.IMAGE_NAME }}:pull" | jq -r '.token')
+            echo "Checking if Docker Hub image already has tag: ${LATEST_VERSION}"
 
-            TAG_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${TOKEN}" \
+            # Fetch Docker Hub authentication token
+            TOKEN_RESPONSE=$(curl -sSf "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${{ env.IMAGE_NAME }}:pull" || {
+              echo "❌ ERROR: Failed to fetch Docker Hub authentication token"
+              exit 1
+            })
+
+            TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.token')
+
+            # Validate token
+            if [ -z "$TOKEN" ] || [ "$TOKEN" == "null" ]; then
+              echo "❌ ERROR: Docker Hub token is empty or null"
+              echo "Token response: $TOKEN_RESPONSE"
+              exit 1
+            fi
+
+            echo "✅ Successfully authenticated with Docker Hub"
+
+            # Check manifest with full error handling
+            HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" \
+              -H "Authorization: Bearer ${TOKEN}" \
               "https://registry-1.docker.io/v2/${{ env.IMAGE_NAME }}/manifests/${LATEST_VERSION}")
 
-            if [ "$TAG_STATUS" == "200" ]; then
-              echo "Docker image tag ${LATEST_VERSION} already exists, no update needed"
-              UPDATE_NEEDED="false"
-            else
-              echo "Docker image tag ${LATEST_VERSION} does not exist, update needed"
-            fi
+            # Split response body and status code
+            TAG_STATUS=$(echo "$HTTP_RESPONSE" | tail -n 1)
+            RESPONSE_BODY=$(echo "$HTTP_RESPONSE" | sed '$d')
+
+            echo "Docker Hub manifest check HTTP status: ${TAG_STATUS}"
+
+            case "$TAG_STATUS" in
+              200)
+                echo "✅ Docker image tag ${LATEST_VERSION} already exists, no update needed"
+                UPDATE_NEEDED="false"
+                ;;
+              404)
+                echo "✅ Docker image tag ${LATEST_VERSION} does not exist, update needed"
+                UPDATE_NEEDED="true"
+                ;;
+              401|403)
+                echo "❌ ERROR: Authentication/authorization failed (HTTP ${TAG_STATUS})"
+                echo "Response: ${RESPONSE_BODY}"
+                exit 1
+                ;;
+              *)
+                echo "⚠️ WARNING: Unexpected HTTP status ${TAG_STATUS}"
+                echo "Response: ${RESPONSE_BODY}"
+                echo "Proceeding with update to be safe"
+                UPDATE_NEEDED="true"
+                ;;
+            esac
           fi
 
           echo "update_needed=${UPDATE_NEEDED}" >> "$GITHUB_OUTPUT"
+          echo "Final decision: UPDATE_NEEDED=${UPDATE_NEEDED}"
 
       - name: Summary
         run: |
