@@ -1,5 +1,7 @@
 FROM nextcloud:32.0.3-apache
 
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 RUN set -e; \
     apt-get update && \
     apt-get install -y libsmbclient-dev build-essential autoconf ffmpeg && \
