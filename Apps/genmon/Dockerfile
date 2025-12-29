@@ -21,7 +21,7 @@ WORKDIR /git
 ENV USE_SERIAL_TCP=true
 
 # Clone the repository with shallow clone to minimize data pulled.
-RUN git clone --depth 1 http://github.com/jgyates/genmon.git && \
+RUN git clone --depth 1 --branch V1.19.06 http://github.com/jgyates/genmon.git && \
     chmod 775 /git/genmon/startgenmon.sh /git/genmon/genmonmaint.sh && \
     rm -rf /git/genmon/.git
 
