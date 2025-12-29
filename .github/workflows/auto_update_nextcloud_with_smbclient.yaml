@@ -1,0 +1,275 @@
+name: "Auto Update Nextcloud with SMBClient"
+
+# This workflow checks for updates to Nextcloud
+# and creates PRs when new versions are available
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC to check for updates
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      force_check:
+        description: 'Force check for updates even if versions match'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  IMAGE_NAME: bigbeartechworld/big-bear-nextcloud-with-smbclient
+  DOCKERFILE_PATH: Apps/nextcloud-with-smbclient
+
+jobs:
+  check-updates:
+    name: Check for Updates
+    runs-on: ubuntu-latest
+    outputs:
+      current_version: ${{ steps.current_version.outputs.version }}
+      latest_version: ${{ steps.latest_version.outputs.version }}
+      update_needed: ${{ steps.compare.outputs.update_needed }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Get Current Version
+        id: current_version
+        run: |
+          set -euo pipefail
+
+          # Get current Nextcloud version from Dockerfile
+          echo "Extracting version from: ${{ env.DOCKERFILE_PATH }}/Dockerfile"
+
+          CURRENT_VERSION=$(grep -oP 'FROM nextcloud:\K[0-9.]+(?=-apache)' "${{ env.DOCKERFILE_PATH }}/Dockerfile" || true)
+
+          # Validate extraction succeeded
+          if [ -z "$CURRENT_VERSION" ]; then
+            echo "❌ ERROR: Failed to extract current version from Dockerfile"
+            echo "Dockerfile path: ${{ env.DOCKERFILE_PATH }}/Dockerfile"
+            echo "Dockerfile content:"
+            cat "${{ env.DOCKERFILE_PATH }}/Dockerfile"
+            exit 1
+          fi
+
+          # Validate version format
+          if ! [[ "$CURRENT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ ERROR: Extracted version has invalid format: '$CURRENT_VERSION'"
+            exit 1
+          fi
+
+          echo "version=${CURRENT_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "✅ Current Nextcloud version: ${CURRENT_VERSION}"
+
+      - name: Get Latest Version
+        id: latest_version
+        run: |
+          set -euo pipefail
+
+          echo "Fetching latest Nextcloud version from Docker Hub..."
+
+          # Fetch tags from Docker Hub API with error handling
+          API_RESPONSE=$(curl -sSf "https://registry.hub.docker.com/v2/repositories/library/nextcloud/tags?page_size=100" || {
+            echo "❌ ERROR: Failed to fetch tags from Docker Hub API"
+            exit 1
+          })
+
+          # Parse and filter tags
+          LATEST_TAG=$(echo "$API_RESPONSE" | \
+            jq -r '.results[].name' | \
+            grep -E '^[0-9]+\.[0-9]+\.[0-9]+-apache$' | \
+            sed 's/-apache$//' | \
+            sort -V | \
+            tail -n 1)
+
+          # Validate we got a result
+          if [ -z "$LATEST_TAG" ]; then
+            echo "❌ ERROR: Failed to extract latest version from Docker Hub"
+            echo "API Response (first 500 chars):"
+            echo "$API_RESPONSE" | head -c 500
+            exit 1
+          fi
+
+          # Validate version format
+          if ! [[ "$LATEST_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ ERROR: Latest version has invalid format: '$LATEST_TAG'"
+            exit 1
+          fi
+
+          echo "version=${LATEST_TAG}" >> "$GITHUB_OUTPUT"
+          echo "✅ Latest Nextcloud version: ${LATEST_TAG}"
+
+      - name: Compare Versions
+        id: compare
+        run: |
+          set -euo pipefail
+
+          CURRENT_VERSION="${{ steps.current_version.outputs.version }}"
+          LATEST_VERSION="${{ steps.latest_version.outputs.version }}"
+          FORCE="${{ github.event.inputs.force_check }}"
+
+          UPDATE_NEEDED="false"
+
+          # Compare versions
+          if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ] || [ "$FORCE" == "true" ]; then
+            echo "Nextcloud update available: ${CURRENT_VERSION} -> ${LATEST_VERSION}"
+            UPDATE_NEEDED="true"
+          else
+            echo "Nextcloud is up to date: ${CURRENT_VERSION}"
+          fi
+
+          # Check if Docker image tag already exists for latest version
+          if [ "$UPDATE_NEEDED" == "true" ]; then
+            echo "Checking if Docker Hub image already has tag: ${LATEST_VERSION}"
+
+            # Fetch Docker Hub authentication token
+            TOKEN_RESPONSE=$(curl -sSf "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${{ env.IMAGE_NAME }}:pull" || {
+              echo "❌ ERROR: Failed to fetch Docker Hub authentication token"
+              exit 1
+            })
+
+            TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.token')
+
+            # Validate token
+            if [ -z "$TOKEN" ] || [ "$TOKEN" == "null" ]; then
+              echo "❌ ERROR: Docker Hub token is empty or null"
+              echo "Token response: $TOKEN_RESPONSE"
+              exit 1
+            fi
+
+            echo "✅ Successfully authenticated with Docker Hub"
+
+            # Check manifest with full error handling
+            HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" \
+              -H "Authorization: Bearer ${TOKEN}" \
+              "https://registry-1.docker.io/v2/${{ env.IMAGE_NAME }}/manifests/${LATEST_VERSION}")
+
+            # Split response body and status code
+            TAG_STATUS=$(echo "$HTTP_RESPONSE" | tail -n 1)
+            RESPONSE_BODY=$(echo "$HTTP_RESPONSE" | sed '$d')
+
+            echo "Docker Hub manifest check HTTP status: ${TAG_STATUS}"
+
+            case "$TAG_STATUS" in
+              200)
+                echo "✅ Docker image tag ${LATEST_VERSION} already exists, no update needed"
+                UPDATE_NEEDED="false"
+                ;;
+              404)
+                echo "✅ Docker image tag ${LATEST_VERSION} does not exist, update needed"
+                UPDATE_NEEDED="true"
+                ;;
+              401|403)
+                echo "❌ ERROR: Authentication/authorization failed (HTTP ${TAG_STATUS})"
+                echo "Response: ${RESPONSE_BODY}"
+                exit 1
+                ;;
+              *)
+                echo "⚠️ WARNING: Unexpected HTTP status ${TAG_STATUS}"
+                echo "Response: ${RESPONSE_BODY}"
+                echo "Proceeding with update to be safe"
+                UPDATE_NEEDED="true"
+                ;;
+            esac
+          fi
+
+          echo "update_needed=${UPDATE_NEEDED}" >> "$GITHUB_OUTPUT"
+          echo "Final decision: UPDATE_NEEDED=${UPDATE_NEEDED}"
+
+      - name: Summary
+        run: |
+          echo "## Version Check Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Current | Latest | Update Available |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|---------|--------|------------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Nextcloud | ${{ steps.current_version.outputs.version }} | ${{ steps.latest_version.outputs.version }} | ${{ steps.compare.outputs.update_needed }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Update needed:** ${{ steps.compare.outputs.update_needed }}" >> $GITHUB_STEP_SUMMARY
+
+  update-and-pr:
+    name: Update Files and Create PR
+    needs: check-updates
+    if: needs.check-updates.outputs.update_needed == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Dockerfile
+        run: |
+          cd ${{ env.DOCKERFILE_PATH }}
+          sed -i "s|FROM nextcloud:[0-9.]*-apache|FROM nextcloud:${{ needs.check-updates.outputs.latest_version }}-apache|" Dockerfile
+          echo "Updated Dockerfile to Nextcloud ${{ needs.check-updates.outputs.latest_version }}"
+
+      - name: Update VERSION file
+        run: |
+          echo "${{ needs.check-updates.outputs.latest_version }}" > ${{ env.DOCKERFILE_PATH }}/VERSION
+
+      - name: Update config.json
+        run: |
+          cd ${{ env.DOCKERFILE_PATH }}
+          jq '.version = "${{ needs.check-updates.outputs.latest_version }}"' config.json > config.json.tmp
+          mv config.json.tmp config.json
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: |
+            chore(nextcloud-with-smbclient): update Nextcloud to ${{ needs.check-updates.outputs.latest_version }}
+          branch: bot/nextcloud-with-smbclient-${{ needs.check-updates.outputs.latest_version }}
+          delete-branch: true
+          title: |
+            chore(nextcloud-with-smbclient): update Nextcloud to ${{ needs.check-updates.outputs.latest_version }}
+          body: |
+            ## 🔄 Automatic Update
+
+            This PR was automatically created because a new version of Nextcloud was detected.
+
+            ### Version Changes
+
+            | Component | Previous | New |
+            |-----------|----------|-----|
+            | Nextcloud | ${{ needs.check-updates.outputs.current_version }} | ${{ needs.check-updates.outputs.latest_version }} |
+
+            ### Files Updated
+            - [x] `Dockerfile` - Base image version updated to `nextcloud:${{ needs.check-updates.outputs.latest_version }}-apache`
+            - [x] `VERSION` - Version file updated to `${{ needs.check-updates.outputs.latest_version }}`
+            - [x] `config.json` - Version metadata updated
+
+            ### Release Notes
+            - 📦 [Nextcloud ${{ needs.check-updates.outputs.latest_version }}](https://github.com/nextcloud/server/releases/tag/v${{ needs.check-updates.outputs.latest_version }})
+            - 📄 [Nextcloud Changelog](https://nextcloud.com/changelog/)
+
+            ### Testing
+            After merging this PR, the build workflow will automatically:
+            1. Build multi-arch Docker images (amd64, arm64)
+            2. Run integration tests to verify:
+               - Nextcloud installation
+               - SMBClient PHP extension is loaded
+               - Apache is serving correctly
+            3. Push to Docker Hub with tags:
+               - `${{ env.IMAGE_NAME }}:latest`
+               - `${{ env.IMAGE_NAME }}:${{ needs.check-updates.outputs.latest_version }}`
+
+            ---
+            *🤖 This PR was automatically created by the auto-update workflow.*
+          labels: |
+            bot
+            dependencies
+            nextcloud-with-smbclient
+            auto-update
+
+  notify-no-update:
+    name: No Update Needed
+    needs: check-updates
+    if: needs.check-updates.outputs.update_needed == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log Status
+        run: |
+          echo "No updates available"
+          echo "Nextcloud: ${{ needs.check-updates.outputs.current_version }} (latest: ${{ needs.check-updates.outputs.latest_version }})"
+          echo "All components are up to date!"
