@@ -1,0 +1,425 @@
+name: "Test ncdu Docker Image"
+
+on:
+  pull_request:
+    paths:
+      - 'Apps/ncdu/**'
+      - '.github/workflows/test_ncdu.yaml'
+  push:
+    branches:
+      - main
+      - 'feature/**'
+      - 'fix/**'
+    paths:
+      - 'Apps/ncdu/**'
+      - '.github/workflows/test_ncdu.yaml'
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: bigbeartechworld/big-bear-ncdu
+  DOCKERFILE_PATH: Apps/ncdu
+  TEST_TAG: test-${{ github.sha }}
+
+jobs:
+  lint:
+    name: Lint Dockerfile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Lint Dockerfile
+        uses: hadolint/hadolint-action@v3.3.0
+        with:
+          dockerfile: Apps/ncdu/Dockerfile
+          failure-threshold: warning
+          ignore: DL3008,DL3015,DL3018
+
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ env.TEST_TAG }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.DOCKERFILE_PATH }}
+          load: true
+          tags: ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Save Docker Image
+        run: |
+          docker save ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} > /tmp/ncdu-image.tar
+
+      - name: Upload Image Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ncdu-image
+          path: /tmp/ncdu-image.tar
+          retention-days: 1
+
+  test-unit:
+    name: Unit Tests
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Image Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ncdu-image
+          path: /tmp
+
+      - name: Load Docker Image
+        run: |
+          docker load < /tmp/ncdu-image.tar
+
+      - name: Test - ncdu Binary Exists
+        run: |
+          echo "Testing ncdu binary..."
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} which ncdu
+
+      - name: Test - gotty Binary Exists
+        run: |
+          echo "Testing gotty binary..."
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} which gotty
+
+      - name: Test - ncdu Version
+        run: |
+          echo "Testing ncdu version..."
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} ncdu --version
+
+      - name: Test - Entrypoint Script Exists and is Executable
+        run: |
+          echo "Testing entrypoint script..."
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} test -x /entrypoint.sh
+          echo "✓ Entrypoint script is executable"
+
+      - name: Test - Required Packages Installed
+        run: |
+          echo "Testing required packages..."
+          # Test for procps (provides ps command)
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} which ps
+          echo "✓ procps installed"
+
+          # Test for curl
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} which curl
+          echo "✓ curl installed"
+
+          # Test for iproute2 (provides ip command)
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} which ip
+          echo "✓ iproute2 installed"
+
+      - name: Test - Environment Variables
+        run: |
+          echo "Testing environment variables..."
+          # Test LANG is set correctly
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} printenv LANG | grep -q "C.UTF-8"
+          echo "✓ LANG set correctly"
+
+          # Test NCDU_PATH default
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} printenv NCDU_PATH | grep -q "/"
+          echo "✓ NCDU_PATH set correctly"
+
+      - name: Test - Alpine Version
+        run: |
+          echo "Checking Alpine version..."
+          ALPINE_VERSION=$(docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} cat /etc/alpine-release)
+          echo "Alpine version: ${ALPINE_VERSION}"
+
+  test-integration:
+    name: Integration Tests
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Image Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ncdu-image
+          path: /tmp
+
+      - name: Load Docker Image
+        run: |
+          docker load < /tmp/ncdu-image.tar
+
+      - name: Start ncdu Container (No Auth)
+        run: |
+          docker run -d \
+            --name ncdu-test \
+            -p 7681:7681 \
+            -e GOTTY_AUTH_ENABLED=false \
+            -e NCDU_PATH=/ \
+            ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }}
+
+      - name: Wait for Service to Start
+        run: |
+          echo "Waiting for gotty to initialize..."
+          for i in {1..30}; do
+            if curl -f -s http://127.0.0.1:7681/ > /dev/null 2>&1; then
+              echo "✓ Service is ready after ${i} seconds"
+              exit 0
+            fi
+            echo "Attempt $i/30: Waiting..."
+            sleep 1
+          done
+          echo "✗ Service failed to start"
+          docker logs ncdu-test
+          exit 1
+
+      - name: Test - Web Interface Accessible
+        run: |
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:7681/)
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
+            echo "✓ Web interface accessible (HTTP $HTTP_CODE)"
+          else
+            echo "✗ Web interface returned HTTP $HTTP_CODE"
+            docker logs ncdu-test
+            exit 1
+          fi
+
+      - name: Test - Web Interface Returns HTML
+        run: |
+          CONTENT=$(curl -s http://127.0.0.1:7681/)
+          if echo "$CONTENT" | grep -q "gotty"; then
+            echo "✓ Web interface serving gotty content"
+          else
+            echo "✗ Unexpected content returned"
+            echo "$CONTENT"
+            exit 1
+          fi
+
+      - name: Test - WebSocket Endpoint Available
+        run: |
+          # Check for WebSocket upgrade support (gotty uses WebSockets)
+          WS_RESPONSE=$(curl -s -I -H "Connection: Upgrade" -H "Upgrade: websocket" http://127.0.0.1:7681/ws)
+          if echo "$WS_RESPONSE" | grep -q "HTTP"; then
+            echo "✓ WebSocket endpoint responding"
+          else
+            echo "✗ WebSocket endpoint not accessible"
+            exit 1
+          fi
+
+      - name: Test - gotty Running with ncdu
+        run: |
+          # ncdu runs on-demand via gotty when clients connect, not continuously
+          # Check that gotty is configured to run ncdu
+          if docker exec ncdu-test ps aux | grep -q "[g]otty.*ncdu"; then
+            echo "✓ gotty is configured to run ncdu"
+          else
+            echo "✗ gotty not configured correctly"
+            docker exec ncdu-test ps aux
+            exit 1
+          fi
+
+      - name: Test - gotty Process Running
+        run: |
+          if docker exec ncdu-test pgrep gotty > /dev/null; then
+            echo "✓ gotty process is running"
+          else
+            echo "✗ gotty process not found"
+            docker exec ncdu-test ps aux
+            exit 1
+          fi
+
+      - name: Test - Container Resource Usage
+        run: |
+          # Check container isn't consuming excessive resources
+          STATS=$(docker stats ncdu-test --no-stream --format "{{.CPUPerc}} {{.MemUsage}}")
+          echo "Container resource usage: $STATS"
+
+      - name: Check Container Logs
+        if: always()
+        run: |
+          echo "=== Container Logs ==="
+          docker logs ncdu-test 2>&1 | tail -50
+
+          echo ""
+          echo "=== Checking for Errors ==="
+          ERRORS=$(docker logs ncdu-test 2>&1 | grep -iE "error|fatal|panic" || echo "No errors found")
+          echo "$ERRORS"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop ncdu-test || true
+          docker rm ncdu-test || true
+
+  test-auth:
+    name: Authentication Tests
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Image Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ncdu-image
+          path: /tmp
+
+      - name: Load Docker Image
+        run: |
+          docker load < /tmp/ncdu-image.tar
+
+      - name: Start ncdu Container (With Auth)
+        run: |
+          docker run -d \
+            --name ncdu-auth-test \
+            -p 7682:7681 \
+            -e GOTTY_AUTH_ENABLED=true \
+            -e GOTTY_AUTH_USER=testuser \
+            -e GOTTY_AUTH_PASS=testpass123 \
+            -e NCDU_PATH=/ \
+            ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }}
+
+      - name: Wait for Service
+        run: |
+          echo "Waiting for service to start..."
+          sleep 5
+
+      - name: Test - Unauthenticated Access Denied
+        run: |
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:7682/)
+          if [ "$HTTP_CODE" -eq 401 ]; then
+            echo "✓ Authentication required (HTTP 401)"
+          else
+            echo "✗ Expected 401, got HTTP $HTTP_CODE"
+            docker logs ncdu-auth-test
+            exit 1
+          fi
+
+      - name: Test - Authenticated Access Succeeds
+        run: |
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -u testuser:testpass123 \
+            http://127.0.0.1:7682/)
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
+            echo "✓ Authenticated access works (HTTP $HTTP_CODE)"
+          else
+            echo "✗ Authentication failed (HTTP $HTTP_CODE)"
+            docker logs ncdu-auth-test
+            exit 1
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop ncdu-auth-test || true
+          docker rm ncdu-auth-test || true
+
+  test-custom-path:
+    name: Custom Path Tests
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Image Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ncdu-image
+          path: /tmp
+
+      - name: Load Docker Image
+        run: |
+          docker load < /tmp/ncdu-image.tar
+
+      - name: Start ncdu Container with Custom Path
+        run: |
+          docker run -d \
+            --name ncdu-path-test \
+            -p 7683:7681 \
+            -e GOTTY_AUTH_ENABLED=false \
+            -e NCDU_PATH=/tmp \
+            ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }}
+
+      - name: Verify Service Starts
+        run: |
+          echo "Waiting for service to start..."
+          sleep 5
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:7683/)
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
+            echo "✓ Custom path configuration works (HTTP $HTTP_CODE)"
+          else
+            echo "✗ Failed with custom path (HTTP $HTTP_CODE)"
+            docker logs ncdu-path-test
+            exit 1
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop ncdu-path-test || true
+          docker rm ncdu-path-test || true
+
+  summary:
+    name: Test Summary
+    needs: [lint, build, test-unit, test-integration, test-auth, test-custom-path]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check Test Results
+        run: |
+          echo "═══════════════════════════════════════════════════════"
+          echo "  ncdu Docker Image Test Summary"
+          echo "═══════════════════════════════════════════════════════"
+          echo ""
+
+          FAILED=0
+
+          # Check each job result
+          if [ "${{ needs.lint.result }}" != "success" ]; then
+            echo "✗ Lint: ${{ needs.lint.result }}"
+            FAILED=1
+          else
+            echo "✓ Lint: success"
+          fi
+
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "✗ Build: ${{ needs.build.result }}"
+            FAILED=1
+          else
+            echo "✓ Build: success"
+          fi
+
+          if [ "${{ needs.test-unit.result }}" != "success" ]; then
+            echo "✗ Unit Tests: ${{ needs.test-unit.result }}"
+            FAILED=1
+          else
+            echo "✓ Unit Tests: success"
+          fi
+
+          if [ "${{ needs.test-integration.result }}" != "success" ]; then
+            echo "✗ Integration Tests: ${{ needs.test-integration.result }}"
+            FAILED=1
+          else
+            echo "✓ Integration Tests: success"
+          fi
+
+          if [ "${{ needs.test-auth.result }}" != "success" ]; then
+            echo "✗ Authentication Tests: ${{ needs.test-auth.result }}"
+            FAILED=1
+          else
+            echo "✓ Authentication Tests: success"
+          fi
+
+          if [ "${{ needs.test-custom-path.result }}" != "success" ]; then
+            echo "✗ Custom Path Tests: ${{ needs.test-custom-path.result }}"
+            FAILED=1
+          else
+            echo "✓ Custom Path Tests: success"
+          fi
+
+          echo ""
+          echo "═══════════════════════════════════════════════════════"
+
+          if [ "$FAILED" -eq 1 ]; then
+            echo "❌ Some tests failed!"
+            exit 1
+          else
+            echo "✅ All tests passed!"
+          fi

@@ -6,9 +6,9 @@ RUN apk add --no-cache \
     vim
 
 # Clone and build gotty
-RUN git clone https://github.com/sorenisanerd/gotty.git /gotty && \
-    cd /gotty && \
-    go build
+RUN git clone https://github.com/sorenisanerd/gotty.git /gotty
+WORKDIR /gotty
+RUN go build
 
 FROM alpine:3.21.3
 
