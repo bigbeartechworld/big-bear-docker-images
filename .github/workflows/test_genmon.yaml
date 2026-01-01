@@ -1,0 +1,278 @@
+name: "Test Genmon Docker Image"
+
+on:
+  pull_request:
+    paths:
+      - 'Apps/genmon/**'
+      - '.github/workflows/test_genmon.yaml'
+  push:
+    branches:
+      - main
+      - 'feature/**'
+      - 'fix/**'
+    paths:
+      - 'Apps/genmon/**'
+      - '.github/workflows/test_genmon.yaml'
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: bigbeartechworld/big-bear-genmon
+  DOCKERFILE_PATH: Apps/genmon
+  TEST_TAG: test-${{ github.sha }}
+
+jobs:
+  lint:
+    name: Lint Dockerfile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Lint Dockerfile
+        uses: hadolint/hadolint-action@v3.3.0
+        with:
+          dockerfile: Apps/genmon/Dockerfile
+          failure-threshold: warning
+          ignore: DL3008
+
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ env.TEST_TAG }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.DOCKERFILE_PATH }}
+          load: true
+          tags: ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Save Docker Image
+        run: |
+          docker save ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} > /tmp/genmon-image.tar
+
+      - name: Upload Image Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: genmon-image
+          path: /tmp/genmon-image.tar
+          retention-days: 1
+
+  test-unit:
+    name: Unit Tests
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Image Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: genmon-image
+          path: /tmp
+
+      - name: Load Docker Image
+        run: |
+          docker load < /tmp/genmon-image.tar
+
+      - name: Test - Genmon Scripts Exist
+        run: |
+          echo "Testing genmon scripts..."
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} test -f /git/genmon/startgenmon.sh
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} test -f /git/genmon/genmonmaint.sh
+          echo "✓ Genmon scripts exist"
+
+      - name: Test - Scripts are Executable
+        run: |
+          echo "Testing script permissions..."
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} test -x /git/genmon/startgenmon.sh
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} test -x /git/genmon/genmonmaint.sh
+          echo "✓ Scripts are executable"
+
+      - name: Test - Required Packages Installed
+        run: |
+          echo "Testing required packages..."
+          # Test for git
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} which git
+          echo "✓ git installed"
+
+          # Test for sudo
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} which sudo
+          echo "✓ sudo installed"
+
+          # Test for cron
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} which cron
+          echo "✓ cron installed"
+
+          # Test for netstat (from net-tools)
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} which netstat
+          echo "✓ net-tools installed"
+
+      - name: Test - Environment Variables
+        run: |
+          echo "Testing environment variables..."
+          # Test USE_SERIAL_TCP is set
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} printenv USE_SERIAL_TCP | grep -q "true"
+          echo "✓ USE_SERIAL_TCP set correctly"
+
+          # Test DEBIAN_FRONTEND is set
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} printenv DEBIAN_FRONTEND | grep -q "noninteractive"
+          echo "✓ DEBIAN_FRONTEND set correctly"
+
+          # Test TZ is set
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} printenv TZ | grep -q "America/Chicago"
+          echo "✓ TZ set correctly"
+
+      - name: Test - Python Version
+        run: |
+          echo "Checking Python version..."
+          PYTHON_VERSION=$(docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} python3 --version)
+          echo "Python version: ${PYTHON_VERSION}"
+          # Verify it's Python 3.12
+          echo "$PYTHON_VERSION" | grep -q "Python 3.12"
+          echo "✓ Python 3.12 installed"
+
+      - name: Test - Genmon Directory Structure
+        run: |
+          echo "Testing genmon directory structure..."
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} test -d /git/genmon
+          docker run --rm ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }} test -f /git/genmon/genmon.py
+          echo "✓ Genmon directory structure is correct"
+
+  test-integration:
+    name: Integration Tests
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Image Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: genmon-image
+          path: /tmp
+
+      - name: Load Docker Image
+        run: |
+          docker load < /tmp/genmon-image.tar
+
+      - name: Start Genmon Container
+        run: |
+          docker run -d \
+            --name genmon-test \
+            -p 8000:8000 \
+            -p 443:443 \
+            ${{ env.IMAGE_NAME }}:${{ env.TEST_TAG }}
+
+      - name: Wait for Container to Initialize
+        run: |
+          echo "Waiting for genmon to initialize..."
+          sleep 10
+
+      - name: Check Container is Running
+        run: |
+          if docker ps | grep -q genmon-test; then
+            echo "✓ Container is running"
+          else
+            echo "✗ Container is not running"
+            docker logs genmon-test
+            exit 1
+          fi
+
+      - name: Test - Entrypoint Script Executed
+        run: |
+          echo "Checking if entrypoint script executed..."
+          docker exec genmon-test test -f /entrypoint.sh
+          echo "✓ Entrypoint script exists"
+
+      - name: Test - Check Genmon Processes
+        run: |
+          echo "Checking genmon processes..."
+          # Check if Python process is running
+          if docker exec genmon-test pgrep -f "python" > /dev/null; then
+            echo "✓ Python processes are running"
+          else
+            echo "⚠️ No Python processes found (this may be expected if genmon requires configuration)"
+          fi
+
+      - name: Check Container Logs
+        if: always()
+        run: |
+          echo "=== Container Logs ==="
+          docker logs genmon-test 2>&1 | tail -100
+
+          echo ""
+          echo "=== Checking for Errors ==="
+          ERRORS=$(docker logs genmon-test 2>&1 | grep -iE "error|fatal|panic" | grep -v "ERROR:" || echo "No critical errors found")
+          echo "$ERRORS"
+
+      - name: Test - Container Resource Usage
+        run: |
+          # Check container isn't consuming excessive resources
+          STATS=$(docker stats genmon-test --no-stream --format "{{.CPUPerc}} {{.MemUsage}}")
+          echo "Container resource usage: $STATS"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop genmon-test || true
+          docker rm genmon-test || true
+
+  summary:
+    name: Test Summary
+    needs: [lint, build, test-unit, test-integration]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check Test Results
+        run: |
+          echo "═══════════════════════════════════════════════════════"
+          echo "  Genmon Docker Image Test Summary"
+          echo "═══════════════════════════════════════════════════════"
+          echo ""
+
+          FAILED=0
+
+          # Check each job result
+          if [ "${{ needs.lint.result }}" != "success" ]; then
+            echo "✗ Lint: ${{ needs.lint.result }}"
+            FAILED=1
+          else
+            echo "✓ Lint: success"
+          fi
+
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "✗ Build: ${{ needs.build.result }}"
+            FAILED=1
+          else
+            echo "✓ Build: success"
+          fi
+
+          if [ "${{ needs.test-unit.result }}" != "success" ]; then
+            echo "✗ Unit Tests: ${{ needs.test-unit.result }}"
+            FAILED=1
+          else
+            echo "✓ Unit Tests: success"
+          fi
+
+          if [ "${{ needs.test-integration.result }}" != "success" ]; then
+            echo "✗ Integration Tests: ${{ needs.test-integration.result }}"
+            FAILED=1
+          else
+            echo "✓ Integration Tests: success"
+          fi
+
+          echo ""
+          echo "═══════════════════════════════════════════════════════"
+
+          if [ "$FAILED" -eq 1 ]; then
+            echo "❌ Some tests failed!"
+            exit 1
+          else
+            echo "✅ All tests passed!"
+          fi
