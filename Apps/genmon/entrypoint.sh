@@ -39,5 +39,10 @@ sed -i "s/use_serial_tcp = .*/use_serial_tcp = $USE_SERIAL_TCP/g" /etc/genmon/ge
 # Start the application
 /git/genmon/startgenmon.sh start
 
-# Follow the log for outputs
-tail -F /var/log/startup.log
+# If a command was provided, execute it instead of tailing logs
+if [ $# -gt 0 ]; then
+    exec "$@"
+else
+    # Follow the log for outputs (normal production mode)
+    tail -F /var/log/startup.log
+fi
