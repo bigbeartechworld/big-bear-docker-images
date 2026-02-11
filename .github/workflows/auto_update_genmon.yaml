@@ -45,8 +45,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Get latest Genmon release from GitHub
-          RELEASE_TAG=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/jgyates/genmon/releases/latest | jq -r '.tag_name')
+          # Get latest Genmon release from GitHub with error handling
+          HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/release.json \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/jgyates/genmon/releases/latest)
+
+          if [ "$HTTP_CODE" -ne 200 ]; then
+            echo "❌ GitHub API request failed with HTTP status: $HTTP_CODE"
+            cat /tmp/release.json
+            exit 1
+          fi
+
+          RELEASE_TAG=$(jq -r '.tag_name' /tmp/release.json)
+
+          # Validate the tag is non-empty and not null
+          if [ -z "$RELEASE_TAG" ] || [ "$RELEASE_TAG" = "null" ]; then
+            echo "❌ Failed to parse valid release tag from GitHub API response"
+            cat /tmp/release.json
+            exit 1
+          fi
+
           # Remove V prefix (V1.19.07 -> 1.19.07)
           LATEST_VERSION=$(echo "$RELEASE_TAG" | sed 's/^V//')
           echo "version=${LATEST_VERSION}" >> "$GITHUB_OUTPUT"
