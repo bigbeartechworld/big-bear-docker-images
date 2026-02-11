@@ -92,6 +92,12 @@ jobs:
           if [ "$UPDATE_NEEDED" == "true" ]; then
             TOKEN=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${{ env.IMAGE_NAME }}:pull" | jq -r '.token')
 
+            # Validate Docker Hub token
+            if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+              echo "❌ Failed to obtain valid Docker Hub token"
+              exit 1
+            fi
+
             HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
               -H "Authorization: Bearer ${TOKEN}" \
               "https://registry-1.docker.io/v2/${{ env.IMAGE_NAME }}/manifests/${LATEST_VERSION}")
