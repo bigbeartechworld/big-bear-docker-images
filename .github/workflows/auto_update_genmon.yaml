@@ -121,7 +121,7 @@ jobs:
         run: |
           cd ${{ env.DOCKERFILE_PATH }}
           # Update git clone to pin to specific release
-          sed -i "s|git clone --depth 1 --branch V[0-9.]* http://github.com/jgyates/genmon.git|git clone --depth 1 --branch V${{ needs.check-updates.outputs.genmon_latest }} http://github.com/jgyates/genmon.git|" Dockerfile
+          sed -i "s|git clone --depth 1 --branch V[0-9]\+\.[0-9]\+\.[0-9]\+ http://github.com/jgyates/genmon.git|git clone --depth 1 --branch V${{ needs.check-updates.outputs.genmon_latest }} http://github.com/jgyates/genmon.git|" Dockerfile
           # Also handle case where no branch is specified yet
           sed -i "s|git clone --depth 1 http://github.com/jgyates/genmon.git|git clone --depth 1 --branch V${{ needs.check-updates.outputs.genmon_latest }} http://github.com/jgyates/genmon.git|" Dockerfile
           echo "Updated Dockerfile to Genmon V${{ needs.check-updates.outputs.genmon_latest }}"
