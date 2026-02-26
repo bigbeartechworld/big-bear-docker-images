@@ -18,7 +18,6 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  issues: write
 
 concurrency:
   group: auto-update-btop
@@ -181,6 +180,7 @@ jobs:
             # Check manifest with full error handling
             HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" \
               -H "Authorization: Bearer ${TOKEN}" \
+              -H "Accept: application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json" \
               "https://registry-1.docker.io/v2/${{ env.IMAGE_NAME }}/manifests/${NEW_VERSION}")
 
             # Split response body and status code
@@ -250,7 +250,7 @@ jobs:
       - name: Update config.json
         run: |
           cd ${{ env.DOCKERFILE_PATH }}
-          if jq '.version = "${{ needs.check-updates.outputs.docker_version_new }}"' config.json > config.json.tmp; then
+          if jq --arg ver "${{ needs.check-updates.outputs.docker_version_new }}" '.version = $ver' config.json > config.json.tmp; then
             mv config.json.tmp config.json
           else
             rm -f config.json.tmp
