@@ -15,6 +15,15 @@ on:
         default: 'false'
         type: boolean
 
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: auto-update-btop
+  cancel-in-progress: false
+
 env:
   IMAGE_NAME: bigbeartechworld/big-bear-btop
   DOCKERFILE_PATH: Apps/btop
@@ -37,37 +46,89 @@ jobs:
       - name: Get Current Versions
         id: current_versions
         run: |
+          set -euo pipefail
+
           # Get current Alpine version from Dockerfile
-          CURRENT_ALPINE=$(grep -oP 'FROM alpine:\K[0-9.]+' ${{ env.DOCKERFILE_PATH }}/Dockerfile)
+          CURRENT_ALPINE=$(grep -oP 'FROM alpine:\K[0-9]+\.[0-9]+\.[0-9]+' "${{ env.DOCKERFILE_PATH }}/Dockerfile" || true)
+
+          if [ -z "$CURRENT_ALPINE" ]; then
+            echo "❌ ERROR: Failed to extract current Alpine version from Dockerfile"
+            cat "${{ env.DOCKERFILE_PATH }}/Dockerfile"
+            exit 1
+          fi
+
+          if ! [[ "$CURRENT_ALPINE" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ ERROR: Extracted Alpine version has invalid format: '$CURRENT_ALPINE'"
+            exit 1
+          fi
+
           echo "alpine=${CURRENT_ALPINE}" >> "$GITHUB_OUTPUT"
-          echo "Current Alpine version: ${CURRENT_ALPINE}"
+          echo "✅ Current Alpine version: ${CURRENT_ALPINE}"
 
           # Get current Docker image version
-          CURRENT_DOCKER_VERSION=$(cat ${{ env.DOCKERFILE_PATH }}/VERSION)
+          CURRENT_DOCKER_VERSION=$(cat "${{ env.DOCKERFILE_PATH }}/VERSION" || true)
+
+          if [ -z "$CURRENT_DOCKER_VERSION" ]; then
+            echo "❌ ERROR: Failed to read current Docker version from VERSION file"
+            exit 1
+          fi
+
+          if ! [[ "$CURRENT_DOCKER_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ ERROR: Docker version has invalid format: '$CURRENT_DOCKER_VERSION'"
+            exit 1
+          fi
+
           echo "docker_version=${CURRENT_DOCKER_VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Current Docker image version: ${CURRENT_DOCKER_VERSION}"
+          echo "✅ Current Docker image version: ${CURRENT_DOCKER_VERSION}"
 
       - name: Get Latest Alpine Version
         id: latest_versions
         run: |
-          # Get latest Alpine release from Docker Hub
-          API_RESPONSE=$(curl -sSf "https://registry.hub.docker.com/v2/repositories/library/alpine/tags?page_size=100")
+          set -euo pipefail
+
+          echo "Fetching latest Alpine version from Docker Hub..."
+
+          # Fetch all tags from Docker Hub API using pagination
+          ALL_TAGS=""
+          NEXT_URL="https://registry.hub.docker.com/v2/repositories/library/alpine/tags?page_size=100"
+          while [ -n "$NEXT_URL" ]; do
+            PAGE_RESPONSE=$(curl -sSf "$NEXT_URL" || {
+              echo "❌ ERROR: Failed to fetch tags from Docker Hub API"
+              exit 1
+            })
+            ALL_TAGS="${ALL_TAGS}$(echo "$PAGE_RESPONSE" | jq -r '.results[].name')"$'\n'
+            NEXT_URL=$(echo "$PAGE_RESPONSE" | jq -r '.next // empty')
+          done
 
           # Filter for stable versions (X.Y.Z format only)
-          LATEST_ALPINE=$(echo "$API_RESPONSE" | \
-            jq -r '.results[].name' | \
+          LATEST_ALPINE=$(echo "$ALL_TAGS" | \
             grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | \
             sort -V | \
             tail -n 1)
 
+          if [ -z "$LATEST_ALPINE" ]; then
+            echo "❌ ERROR: Failed to extract latest Alpine version from Docker Hub"
+            echo "All tags collected (first 500 chars):"
+            echo "$ALL_TAGS" | head -c 500
+            exit 1
+          fi
+
           echo "alpine=${LATEST_ALPINE}" >> "$GITHUB_OUTPUT"
-          echo "Latest Alpine version: ${LATEST_ALPINE}"
+          echo "✅ Latest Alpine version: ${LATEST_ALPINE}"
 
       - name: Calculate New Docker Version
         id: calculate_version
         run: |
+          set -euo pipefail
+
           # Increment patch version (0.1.5 -> 0.1.6)
           CURRENT_VERSION="${{ steps.current_versions.outputs.docker_version }}"
+
+          if ! [[ "$CURRENT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ ERROR: Current version has invalid semver format: '$CURRENT_VERSION'"
+            exit 1
+          fi
+
           MAJOR=$(echo "$CURRENT_VERSION" | cut -d. -f1)
           MINOR=$(echo "$CURRENT_VERSION" | cut -d. -f2)
           PATCH=$(echo "$CURRENT_VERSION" | cut -d. -f3)
@@ -75,11 +136,13 @@ jobs:
           NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
 
           echo "new_version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
-          echo "New Docker version will be: ${NEW_VERSION}"
+          echo "✅ New Docker version will be: ${NEW_VERSION}"
 
       - name: Compare Versions and Check Docker Hub
         id: compare
         run: |
+          set -euo pipefail
+
           CURRENT_ALPINE="${{ steps.current_versions.outputs.alpine }}"
           LATEST_ALPINE="${{ steps.latest_versions.outputs.alpine }}"
           NEW_VERSION="${{ steps.calculate_version.outputs.new_version }}"
@@ -97,11 +160,34 @@ jobs:
 
           # Check if Docker image tag exists for new version
           if [ "$UPDATE_NEEDED" == "true" ]; then
-            TOKEN=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${{ env.IMAGE_NAME }}:pull" | jq -r '.token')
+            echo "Checking if Docker Hub image already has tag: ${NEW_VERSION}"
 
-            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            # Fetch Docker Hub authentication token
+            TOKEN_RESPONSE=$(curl -sSf "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${{ env.IMAGE_NAME }}:pull" || {
+              echo "❌ ERROR: Failed to fetch Docker Hub authentication token"
+              exit 1
+            })
+
+            TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.token')
+
+            # Validate token
+            if [ -z "$TOKEN" ] || [ "$TOKEN" == "null" ]; then
+              echo "❌ ERROR: Docker Hub token is empty or null"
+              exit 1
+            fi
+
+            echo "✅ Successfully authenticated with Docker Hub"
+
+            # Check manifest with full error handling
+            HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" \
               -H "Authorization: Bearer ${TOKEN}" \
               "https://registry-1.docker.io/v2/${{ env.IMAGE_NAME }}/manifests/${NEW_VERSION}")
+
+            # Split response body and status code
+            HTTP_STATUS=$(echo "$HTTP_RESPONSE" | tail -n 1)
+            RESPONSE_BODY=$(echo "$HTTP_RESPONSE" | sed '$d')
+
+            echo "Docker Hub manifest check HTTP status: ${HTTP_STATUS}"
 
             case "$HTTP_STATUS" in
               200)
@@ -112,14 +198,20 @@ jobs:
                 echo "✅ Docker image tag ${NEW_VERSION} does not exist, update needed"
                 UPDATE_NEEDED="true"
                 ;;
+              401|403)
+                echo "❌ ERROR: Authentication/authorization failed (HTTP ${HTTP_STATUS})"
+                echo "Response: ${RESPONSE_BODY}"
+                exit 1
+                ;;
               *)
-                echo "⚠️ Unexpected status ${HTTP_STATUS}, proceeding with update"
-                UPDATE_NEEDED="true"
+                echo "::error::Unexpected Docker Hub status ${HTTP_STATUS}; aborting to avoid false-positive PR"
+                exit 1
                 ;;
             esac
           fi
 
           echo "update_needed=${UPDATE_NEEDED}" >> "$GITHUB_OUTPUT"
+          echo "Final decision: UPDATE_NEEDED=${UPDATE_NEEDED}"
 
       - name: Summary
         run: |
@@ -147,7 +239,7 @@ jobs:
       - name: Update Dockerfile
         run: |
           cd ${{ env.DOCKERFILE_PATH }}
-          sed -i "s|FROM alpine:[0-9.]*|FROM alpine:${{ needs.check-updates.outputs.alpine_latest }}|g" Dockerfile
+          sed -i "s|FROM alpine:[0-9]\+\.[0-9]\+\.[0-9]\+|FROM alpine:${{ needs.check-updates.outputs.alpine_latest }}|g" Dockerfile
           echo "Updated Dockerfile to Alpine ${{ needs.check-updates.outputs.alpine_latest }}"
 
       - name: Update VERSION file
@@ -158,8 +250,13 @@ jobs:
       - name: Update config.json
         run: |
           cd ${{ env.DOCKERFILE_PATH }}
-          jq '.version = "${{ needs.check-updates.outputs.docker_version_new }}"' config.json > config.json.tmp
-          mv config.json.tmp config.json
+          if jq '.version = "${{ needs.check-updates.outputs.docker_version_new }}"' config.json > config.json.tmp; then
+            mv config.json.tmp config.json
+          else
+            rm -f config.json.tmp
+            echo "❌ ERROR: jq failed to update config.json"
+            exit 1
+          fi
           echo "Updated config.json to version ${{ needs.check-updates.outputs.docker_version_new }}"
 
       - name: Create Pull Request
