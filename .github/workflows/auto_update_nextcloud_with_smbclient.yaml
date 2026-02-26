@@ -132,7 +132,6 @@ jobs:
             # Validate token
             if [ -z "$TOKEN" ] || [ "$TOKEN" == "null" ]; then
               echo "❌ ERROR: Docker Hub token is empty or null"
-              echo "Token response: $TOKEN_RESPONSE"
               exit 1
             fi
 
