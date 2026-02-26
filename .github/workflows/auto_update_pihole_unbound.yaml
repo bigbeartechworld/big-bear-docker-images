@@ -67,15 +67,20 @@ jobs:
 
           echo "Fetching latest Pi-hole version from Docker Hub..."
 
-          # Fetch tags from Docker Hub API with error handling
-          API_RESPONSE=$(curl -sSf "https://registry.hub.docker.com/v2/repositories/pihole/pihole/tags?page_size=100" || {
-            echo "❌ ERROR: Failed to fetch tags from Docker Hub API"
-            exit 1
-          })
+          # Fetch all tags from Docker Hub API using pagination
+          ALL_TAGS=""
+          NEXT_URL="https://registry.hub.docker.com/v2/repositories/pihole/pihole/tags?page_size=100"
+          while [ -n "$NEXT_URL" ]; do
+            PAGE_RESPONSE=$(curl -sSf "$NEXT_URL" || {
+              echo "❌ ERROR: Failed to fetch tags from Docker Hub API"
+              exit 1
+            })
+            ALL_TAGS="${ALL_TAGS}$(echo "$PAGE_RESPONSE" | jq -r '.results[].name')"$'\n'
+            NEXT_URL=$(echo "$PAGE_RESPONSE" | jq -r '.next // empty')
+          done
 
           # Parse and filter tags - Pi-hole uses YYYY.MM.N format (e.g., 2026.02.0)
-          LATEST_TAG=$(echo "$API_RESPONSE" | \
-            jq -r '.results[].name' | \
+          LATEST_TAG=$(echo "$ALL_TAGS" | \
             grep -E '^[0-9]{4}\.[0-9]{2}\.[0-9]+$' | \
             sort -V | \
             tail -n 1)
@@ -83,8 +88,8 @@ jobs:
           # Validate we got a result
           if [ -z "$LATEST_TAG" ]; then
             echo "❌ ERROR: Failed to extract latest version from Docker Hub"
-            echo "API Response (first 500 chars):"
-            echo "$API_RESPONSE" | head -c 500
+            echo "All tags collected (first 500 chars):"
+            echo "$ALL_TAGS" | head -c 500
             exit 1
           fi
 
@@ -131,7 +136,6 @@ jobs:
             # Validate token
             if [ -z "$TOKEN" ] || [ "$TOKEN" == "null" ]; then
               echo "❌ ERROR: Docker Hub token is empty or null"
-              echo "Token response: $TOKEN_RESPONSE"
               exit 1
             fi
 
