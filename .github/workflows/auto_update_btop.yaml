@@ -1,0 +1,327 @@
+name: "Auto Update btop (Alpine Base)"
+
+# This workflow checks for updates to Alpine Linux base image
+# and creates PRs when new versions are available
+
+on:
+  schedule:
+    # Run daily at 5 AM UTC to check for updates
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+    inputs:
+      force_check:
+        description: 'Force check for updates even if versions match'
+        required: false
+        default: 'false'
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: auto-update-btop
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: bigbeartechworld/big-bear-btop
+  DOCKERFILE_PATH: Apps/btop
+
+jobs:
+  check-updates:
+    name: Check for Updates
+    runs-on: ubuntu-latest
+    outputs:
+      alpine_current: ${{ steps.current_versions.outputs.alpine }}
+      alpine_latest: ${{ steps.latest_versions.outputs.alpine }}
+      docker_version_current: ${{ steps.current_versions.outputs.docker_version }}
+      docker_version_new: ${{ steps.calculate_version.outputs.new_version }}
+      update_needed: ${{ steps.compare.outputs.update_needed }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Get Current Versions
+        id: current_versions
+        run: |
+          set -euo pipefail
+
+          # Get current Alpine version from Dockerfile
+          CURRENT_ALPINE=$(grep -oP 'FROM alpine:\K[0-9]+\.[0-9]+\.[0-9]+' "${{ env.DOCKERFILE_PATH }}/Dockerfile" || true)
+
+          if [ -z "$CURRENT_ALPINE" ]; then
+            echo "❌ ERROR: Failed to extract current Alpine version from Dockerfile"
+            cat "${{ env.DOCKERFILE_PATH }}/Dockerfile"
+            exit 1
+          fi
+
+          if ! [[ "$CURRENT_ALPINE" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ ERROR: Extracted Alpine version has invalid format: '$CURRENT_ALPINE'"
+            exit 1
+          fi
+
+          echo "alpine=${CURRENT_ALPINE}" >> "$GITHUB_OUTPUT"
+          echo "✅ Current Alpine version: ${CURRENT_ALPINE}"
+
+          # Get current Docker image version
+          CURRENT_DOCKER_VERSION=$(cat "${{ env.DOCKERFILE_PATH }}/VERSION" || true)
+
+          if [ -z "$CURRENT_DOCKER_VERSION" ]; then
+            echo "❌ ERROR: Failed to read current Docker version from VERSION file"
+            exit 1
+          fi
+
+          if ! [[ "$CURRENT_DOCKER_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ ERROR: Docker version has invalid format: '$CURRENT_DOCKER_VERSION'"
+            exit 1
+          fi
+
+          echo "docker_version=${CURRENT_DOCKER_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "✅ Current Docker image version: ${CURRENT_DOCKER_VERSION}"
+
+      - name: Get Latest Alpine Version
+        id: latest_versions
+        run: |
+          set -euo pipefail
+
+          echo "Fetching latest Alpine version from Docker Hub..."
+
+          # Fetch all tags from Docker Hub API using pagination
+          ALL_TAGS=""
+          NEXT_URL="https://registry.hub.docker.com/v2/repositories/library/alpine/tags?page_size=100"
+          while [ -n "$NEXT_URL" ]; do
+            PAGE_RESPONSE=$(curl -sSf "$NEXT_URL" || {
+              echo "❌ ERROR: Failed to fetch tags from Docker Hub API"
+              exit 1
+            })
+            ALL_TAGS="${ALL_TAGS}$(echo "$PAGE_RESPONSE" | jq -r '.results[].name')"$'\n'
+            NEXT_URL=$(echo "$PAGE_RESPONSE" | jq -r '.next // empty')
+          done
+
+          # Filter for stable versions (X.Y.Z format only)
+          LATEST_ALPINE=$(echo "$ALL_TAGS" | \
+            grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | \
+            sort -V | \
+            tail -n 1)
+
+          if [ -z "$LATEST_ALPINE" ]; then
+            echo "❌ ERROR: Failed to extract latest Alpine version from Docker Hub"
+            echo "All tags collected (first 500 chars):"
+            echo "$ALL_TAGS" | head -c 500
+            exit 1
+          fi
+
+          echo "alpine=${LATEST_ALPINE}" >> "$GITHUB_OUTPUT"
+          echo "✅ Latest Alpine version: ${LATEST_ALPINE}"
+
+      - name: Calculate New Docker Version
+        id: calculate_version
+        run: |
+          set -euo pipefail
+
+          # Increment patch version (0.1.5 -> 0.1.6)
+          CURRENT_VERSION="${{ steps.current_versions.outputs.docker_version }}"
+
+          if ! [[ "$CURRENT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ ERROR: Current version has invalid semver format: '$CURRENT_VERSION'"
+            exit 1
+          fi
+
+          MAJOR=$(echo "$CURRENT_VERSION" | cut -d. -f1)
+          MINOR=$(echo "$CURRENT_VERSION" | cut -d. -f2)
+          PATCH=$(echo "$CURRENT_VERSION" | cut -d. -f3)
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+
+          echo "new_version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "✅ New Docker version will be: ${NEW_VERSION}"
+
+      - name: Compare Versions and Check Docker Hub
+        id: compare
+        run: |
+          set -euo pipefail
+
+          CURRENT_ALPINE="${{ steps.current_versions.outputs.alpine }}"
+          LATEST_ALPINE="${{ steps.latest_versions.outputs.alpine }}"
+          NEW_VERSION="${{ steps.calculate_version.outputs.new_version }}"
+          FORCE="${{ github.event.inputs.force_check }}"
+
+          UPDATE_NEEDED="false"
+
+          # Compare Alpine versions
+          if [ "$CURRENT_ALPINE" != "$LATEST_ALPINE" ] || [ "$FORCE" == "true" ]; then
+            echo "Alpine update available: ${CURRENT_ALPINE} -> ${LATEST_ALPINE}"
+            UPDATE_NEEDED="true"
+          else
+            echo "Alpine is up to date: ${CURRENT_ALPINE}"
+          fi
+
+          # Check if Docker image tag exists for new version
+          if [ "$UPDATE_NEEDED" == "true" ]; then
+            echo "Checking if Docker Hub image already has tag: ${NEW_VERSION}"
+
+            # Fetch Docker Hub authentication token
+            TOKEN_RESPONSE=$(curl -sSf "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${{ env.IMAGE_NAME }}:pull" || {
+              echo "❌ ERROR: Failed to fetch Docker Hub authentication token"
+              exit 1
+            })
+
+            TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.token')
+
+            # Validate token
+            if [ -z "$TOKEN" ] || [ "$TOKEN" == "null" ]; then
+              echo "❌ ERROR: Docker Hub token is empty or null"
+              exit 1
+            fi
+
+            echo "✅ Successfully authenticated with Docker Hub"
+
+            # Check manifest with full error handling
+            HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" \
+              -H "Authorization: Bearer ${TOKEN}" \
+              -H "Accept: application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json" \
+              "https://registry-1.docker.io/v2/${{ env.IMAGE_NAME }}/manifests/${NEW_VERSION}")
+
+            # Split response body and status code
+            HTTP_STATUS=$(echo "$HTTP_RESPONSE" | tail -n 1)
+            RESPONSE_BODY=$(echo "$HTTP_RESPONSE" | sed '$d')
+
+            echo "Docker Hub manifest check HTTP status: ${HTTP_STATUS}"
+
+            case "$HTTP_STATUS" in
+              200)
+                echo "✅ Docker image tag ${NEW_VERSION} already exists, no update needed"
+                UPDATE_NEEDED="false"
+                ;;
+              404)
+                echo "✅ Docker image tag ${NEW_VERSION} does not exist, update needed"
+                UPDATE_NEEDED="true"
+                ;;
+              401|403)
+                echo "❌ ERROR: Authentication/authorization failed (HTTP ${HTTP_STATUS})"
+                echo "Response: ${RESPONSE_BODY}"
+                exit 1
+                ;;
+              *)
+                echo "::error::Unexpected Docker Hub status ${HTTP_STATUS}; aborting to avoid false-positive PR"
+                exit 1
+                ;;
+            esac
+          fi
+
+          echo "update_needed=${UPDATE_NEEDED}" >> "$GITHUB_OUTPUT"
+          echo "Final decision: UPDATE_NEEDED=${UPDATE_NEEDED}"
+
+      - name: Summary
+        run: |
+          echo "## Version Check Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Current | Latest | Update Available |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|---------|--------|------------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Alpine Linux | ${{ steps.current_versions.outputs.alpine }} | ${{ steps.latest_versions.outputs.alpine }} | ${{ steps.compare.outputs.update_needed }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker Image | ${{ steps.current_versions.outputs.docker_version }} | ${{ steps.calculate_version.outputs.new_version }} | ${{ steps.compare.outputs.update_needed }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Update needed:** ${{ steps.compare.outputs.update_needed }}" >> $GITHUB_STEP_SUMMARY
+
+  update-and-pr:
+    name: Update and Create PR
+    needs: check-updates
+    if: needs.check-updates.outputs.update_needed == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Dockerfile
+        run: |
+          cd ${{ env.DOCKERFILE_PATH }}
+          sed -i "s|FROM alpine:[0-9]\+\.[0-9]\+\.[0-9]\+|FROM alpine:${{ needs.check-updates.outputs.alpine_latest }}|g" Dockerfile
+          echo "Updated Dockerfile to Alpine ${{ needs.check-updates.outputs.alpine_latest }}"
+
+      - name: Update VERSION file
+        run: |
+          echo "${{ needs.check-updates.outputs.docker_version_new }}" > ${{ env.DOCKERFILE_PATH }}/VERSION
+          echo "Updated VERSION to ${{ needs.check-updates.outputs.docker_version_new }}"
+
+      - name: Update config.json
+        run: |
+          cd ${{ env.DOCKERFILE_PATH }}
+          if jq --arg ver "${{ needs.check-updates.outputs.docker_version_new }}" '.version = $ver' config.json > config.json.tmp; then
+            mv config.json.tmp config.json
+          else
+            rm -f config.json.tmp
+            echo "❌ ERROR: jq failed to update config.json"
+            exit 1
+          fi
+          echo "Updated config.json to version ${{ needs.check-updates.outputs.docker_version_new }}"
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: |
+            chore(btop): update Alpine base to ${{ needs.check-updates.outputs.alpine_latest }} (v${{ needs.check-updates.outputs.docker_version_new }})
+          branch: bot/btop-alpine-${{ needs.check-updates.outputs.alpine_latest }}
+          delete-branch: true
+          title: |
+            chore(btop): update Alpine base to ${{ needs.check-updates.outputs.alpine_latest }} (v${{ needs.check-updates.outputs.docker_version_new }})
+          body: |
+            ## 🔄 Automatic Update
+
+            This PR was automatically created because a new version of Alpine Linux was detected.
+
+            ### Version Changes
+
+            | Component | Previous | New |
+            |-----------|----------|-----|
+            | Alpine Linux | ${{ needs.check-updates.outputs.alpine_current }} | ${{ needs.check-updates.outputs.alpine_latest }} |
+            | Docker Image | ${{ needs.check-updates.outputs.docker_version_current }} | ${{ needs.check-updates.outputs.docker_version_new }} |
+
+            ### Files Updated
+            - [x] `Dockerfile` - Alpine base image version
+            - [x] `VERSION` - Docker image version (incremented)
+            - [x] `config.json` - Version metadata
+
+            ### What's Included
+            - **Alpine ${{ needs.check-updates.outputs.alpine_latest }}**: Security updates, package updates, and bug fixes
+            - **btop**: Latest version available from Alpine ${{ needs.check-updates.outputs.alpine_latest }} repos
+            - **gotty**: Rebuilt from source with latest Go
+
+            ### Release Notes
+            - 📦 [Alpine Release Notes](https://alpinelinux.org/posts/)
+
+            ### Testing
+            After merging this PR, the build workflow will automatically:
+            1. Build multi-arch Docker images (amd64, arm64)
+            2. Run test suite to verify:
+               - btop binary exists and is executable
+               - gotty web interface is accessible
+               - Basic btop functionality works
+            3. Push to Docker Hub with tags:
+               - `${{ env.IMAGE_NAME }}:latest`
+               - `${{ env.IMAGE_NAME }}:${{ needs.check-updates.outputs.docker_version_new }}`
+
+            ---
+            *🤖 This PR was automatically created by the auto-update workflow.*
+          labels: |
+            bot
+            dependencies
+            btop
+            auto-update
+
+  notify-no-update:
+    name: No Update Needed
+    needs: check-updates
+    if: needs.check-updates.outputs.update_needed == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log Status
+        run: |
+          echo "No updates available"
+          echo "Alpine: ${{ needs.check-updates.outputs.alpine_current }} (latest: ${{ needs.check-updates.outputs.alpine_latest }})"
+          echo "Docker Image: ${{ needs.check-updates.outputs.docker_version_current }}"
+          echo "All components are up to date!"
