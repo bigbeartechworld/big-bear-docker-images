@@ -1,5 +1,5 @@
 # Use a specific tag for a stable and predictable base image.
-FROM python:3.12-slim
+FROM python:3.13-slim
 
 # Set non-interactive mode and define timezone to avoid unnecessary prompts during build.
 ENV DEBIAN_FRONTEND=noninteractive TZ="America/Chicago"
