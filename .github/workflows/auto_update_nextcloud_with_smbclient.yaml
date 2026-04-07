@@ -194,7 +194,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PERSONAL_TOKEN }}
 
       - name: Update Dockerfile
         run: |
@@ -215,7 +215,7 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v8
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PERSONAL_TOKEN }}
           commit-message: |
             chore(nextcloud-with-smbclient): update Nextcloud to ${{ needs.check-updates.outputs.latest_version }}
           branch: bot/nextcloud-with-smbclient-${{ needs.check-updates.outputs.latest_version }}
@@ -260,6 +260,7 @@ jobs:
             dependencies
             nextcloud-with-smbclient
             auto-update
+            automerge
 
   notify-no-update:
     name: No Update Needed
