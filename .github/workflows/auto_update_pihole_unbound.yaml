@@ -198,7 +198,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PERSONAL_TOKEN }}
 
       - name: Update Dockerfile
         run: |
@@ -225,7 +225,7 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v8
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PERSONAL_TOKEN }}
           commit-message: |
             chore(pihole-unbound): update Pi-hole to ${{ needs.check-updates.outputs.latest_version }}
           branch: bot/pihole-unbound-${{ needs.check-updates.outputs.latest_version }}
@@ -266,6 +266,7 @@ jobs:
             dependencies
             pihole-unbound
             auto-update
+            automerge
 
   notify-no-update:
     name: No Update Needed

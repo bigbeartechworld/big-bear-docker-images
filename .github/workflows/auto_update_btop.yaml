@@ -234,7 +234,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PERSONAL_TOKEN }}
 
       - name: Update Dockerfile
         run: |
@@ -262,7 +262,7 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v8
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PERSONAL_TOKEN }}
           commit-message: |
             chore(btop): update Alpine base to ${{ needs.check-updates.outputs.alpine_latest }} (v${{ needs.check-updates.outputs.docker_version_new }})
           branch: bot/btop-alpine-${{ needs.check-updates.outputs.alpine_latest }}
@@ -312,6 +312,7 @@ jobs:
             dependencies
             btop
             auto-update
+            automerge
 
   notify-no-update:
     name: No Update Needed

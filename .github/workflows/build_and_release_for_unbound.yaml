@@ -325,6 +325,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PERSONAL_TOKEN }}
 
       - name: Update VERSION file
         run: |
@@ -344,7 +346,7 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PERSONAL_TOKEN }}
           commit-message: |
             chore(unbound): update to version ${{ needs.check-unbound-release.outputs.unbound_version }}
           branch: bot/unbound-update-${{ needs.check-unbound-release.outputs.unbound_version }}
@@ -374,3 +376,4 @@ jobs:
             bot
             unbound
             update
+            automerge
