@@ -1,4 +1,4 @@
-FROM alpine:3.21.3
+FROM alpine:3.23.3
 
 # Install required packages for running btop and gotty
 RUN apk add --no-cache \
