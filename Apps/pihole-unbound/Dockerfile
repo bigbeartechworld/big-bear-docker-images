@@ -1,5 +1,5 @@
 # Use pihole base image
-FROM pihole/pihole:2026.04.0
+FROM pihole/pihole:2026.04.1
 
 # Install Unbound using apk (Alpine package manager)
 RUN apk update && apk add --no-cache unbound \
