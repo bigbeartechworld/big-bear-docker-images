@@ -22,7 +22,7 @@ docker pull bigbeartechworld/<image-name>
 | Nextcloud with SMBClient | bigbeartechworld/big-bear-nextcloud-with-smbclient | 33.0.3 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt9Au1cUiVkyx25bOxAbhF83) |  |
 | Pihole and Unbound | bigbeartechworld/big-bear-pihole-unbound | 2026.04.1 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt_21TJEBkhIm52aU-w3K4vi) | [Docs](https://community.bigbeartechworld.com/t/added-pihole-and-unbound-to-bigbeardockerimages/192) |
 | PocketBase | bigbeartechworld/big-bear-pocketbase | 0.29.3 |  | [Docs](https://community.bigbeartechworld.com/t/pocketbase-is-on-bigbeardockerimages/28) |
-| Unbound | bigbeartechworld/big-bear-unbound | 1.24.2 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt9_yeFJvG6Nhby8gTVStxb0) | [Docs](https://unbound.docs.nlnetlabs.nl/) |
+| Unbound | bigbeartechworld/big-bear-unbound | 1.25.0 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt9_yeFJvG6Nhby8gTVStxb0) | [Docs](https://unbound.docs.nlnetlabs.nl/) |
 
 
 ## Docker Image Suggestions
