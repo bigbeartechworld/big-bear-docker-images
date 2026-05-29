@@ -11,7 +11,7 @@ RUN apk add --no-cache \
     libcap
 
 # Clone, build, and install gotty
-RUN git clone https://github.com/sorenisanerd/gotty.git /tmp/gotty && \
+RUN git clone --depth 1 --branch v1.7.2 https://github.com/sorenisanerd/gotty.git /tmp/gotty && \
     cd /tmp/gotty && \
     go build && \
     mv gotty /usr/local/bin/ && \

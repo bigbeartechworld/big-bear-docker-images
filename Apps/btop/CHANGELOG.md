@@ -5,6 +5,12 @@ All notable changes to the btop Docker image will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8] - 2026-05-29
+
+### Fixed
+
+- Pinned the gotty build to release tag `v1.7.2` so it builds against the Alpine Go toolchain (gotty's default branch now requires Go 1.26)
+
 ## [0.0.9] - 2025-04-04
 
 ### Added
