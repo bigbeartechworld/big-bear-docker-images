@@ -12,6 +12,9 @@ jobs:
   create:
     name: "Creates the newest release by version"
     runs-on: "ubuntu-latest"
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout project
@@ -20,7 +23,10 @@ jobs:
       # New step to read the VERSION file and set the version as an output
       - name: Get the version
         id: get_version
-        run: echo "genmon_version=$(cat Apps/genmon/VERSION)" >> $GITHUB_ENV
+        run: |
+          VERSION=$(tr -d '\n\r' < Apps/genmon/VERSION)
+          [[ "$VERSION" =~ ^[0-9A-Za-z._-]+$ ]] || { echo "Invalid VERSION: $VERSION"; exit 1; }
+          echo "genmon_version=$VERSION" >> "$GITHUB_ENV"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@master
