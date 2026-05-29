@@ -6,7 +6,7 @@ RUN apk add --no-cache \
     vim
 
 # Clone and build gotty
-RUN git clone https://github.com/sorenisanerd/gotty.git /gotty
+RUN git clone --depth 1 --branch v1.7.2 https://github.com/sorenisanerd/gotty.git /gotty
 WORKDIR /gotty
 RUN go build
 

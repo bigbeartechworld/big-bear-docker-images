@@ -26,6 +26,7 @@ jobs:
     outputs:
       genmon_current: ${{ steps.current_version.outputs.version }}
       genmon_latest: ${{ steps.latest_version.outputs.version }}
+      genmon_release_tag: ${{ steps.latest_version.outputs.release_tag }}
       update_needed: ${{ steps.compare.outputs.update_needed }}
 
     steps:
@@ -66,10 +67,11 @@ jobs:
             exit 1
           fi
 
-          # Remove V prefix (V1.19.07 -> 1.19.07)
+          # Remove V prefix for the image/config version (V1.19.07 -> 1.19.07)
           LATEST_VERSION=$(echo "$RELEASE_TAG" | sed 's/^V//')
           echo "version=${LATEST_VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Latest Genmon version: ${LATEST_VERSION}"
+          echo "release_tag=${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "Latest Genmon version: ${LATEST_VERSION} (git tag: ${RELEASE_TAG})"
 
       - name: Compare Versions and Check Docker Hub
         id: compare
@@ -143,13 +145,13 @@ jobs:
           token: ${{ secrets.PERSONAL_TOKEN }}
 
       - name: Update Dockerfile
+        env:
+          RELEASE_TAG: ${{ needs.check-updates.outputs.genmon_release_tag }}
         run: |
           cd ${{ env.DOCKERFILE_PATH }}
-          # Update git clone to pin to specific release
-          sed -i "s|git clone --depth 1 --branch V[0-9]\+\.[0-9]\+\.[0-9]\+ http://github.com/jgyates/genmon.git|git clone --depth 1 --branch V${{ needs.check-updates.outputs.genmon_latest }} http://github.com/jgyates/genmon.git|" Dockerfile
-          # Also handle case where no branch is specified yet
-          sed -i "s|git clone --depth 1 http://github.com/jgyates/genmon.git|git clone --depth 1 --branch V${{ needs.check-updates.outputs.genmon_latest }} http://github.com/jgyates/genmon.git|" Dockerfile
-          echo "Updated Dockerfile to Genmon V${{ needs.check-updates.outputs.genmon_latest }}"
+          # Repoint any existing pinned clone to the upstream release tag verbatim
+          sed -i -E "s|git clone --depth 1 (--branch [^ ]+ )?https?://github.com/jgyates/genmon.git|git clone --depth 1 --branch ${RELEASE_TAG} https://github.com/jgyates/genmon.git|" Dockerfile
+          echo "Updated Dockerfile to Genmon ${RELEASE_TAG}"
 
       - name: Update VERSION file
         run: |
@@ -190,7 +192,7 @@ jobs:
             - [x] `config.json` - Version metadata
 
             ### Release Notes
-            - 📦 [Genmon v${{ needs.check-updates.outputs.genmon_latest }} Release](https://github.com/jgyates/genmon/releases/tag/V${{ needs.check-updates.outputs.genmon_latest }})
+            - 📦 [Genmon ${{ needs.check-updates.outputs.genmon_latest }} Release](https://github.com/jgyates/genmon/releases/tag/${{ needs.check-updates.outputs.genmon_release_tag }})
 
             ### Testing
             After merging this PR, the build workflow will automatically:
