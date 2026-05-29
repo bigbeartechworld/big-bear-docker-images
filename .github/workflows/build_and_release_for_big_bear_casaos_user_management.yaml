@@ -1,6 +1,7 @@
 name: "Build and release for big-bear-casaos-user-management"
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main

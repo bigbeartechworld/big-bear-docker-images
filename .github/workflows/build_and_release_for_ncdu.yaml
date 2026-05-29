@@ -1,6 +1,7 @@
 name: "Build and release for ncdu"
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
