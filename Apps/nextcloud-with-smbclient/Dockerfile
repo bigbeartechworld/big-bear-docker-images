@@ -14,7 +14,6 @@ RUN set -e; \
 # OCI Image Labels
 ARG VERSION
 ARG REVISION
-ARG CREATED
 LABEL org.opencontainers.image.title="Big Bear Nextcloud with SMBClient" \
       org.opencontainers.image.description="Nextcloud file sharing platform with SMBClient support for Windows shares" \
       org.opencontainers.image.url="https://github.com/bigbeartechworld/big-bear-docker-images" \
@@ -22,5 +21,4 @@ LABEL org.opencontainers.image.title="Big Bear Nextcloud with SMBClient" \
       org.opencontainers.image.vendor="BigBearTechWorld" \
       org.opencontainers.image.licenses="AGPL-3.0-or-later" \
       org.opencontainers.image.version="${VERSION}" \
-      org.opencontainers.image.revision="${REVISION}" \
-      org.opencontainers.image.created="${CREATED}"
+      org.opencontainers.image.revision="${REVISION}"

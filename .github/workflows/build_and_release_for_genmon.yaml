@@ -28,9 +28,6 @@ jobs:
           [[ "$VERSION" =~ ^[0-9A-Za-z._-]+$ ]] || { echo "Invalid VERSION: $VERSION"; exit 1; }
           echo "genmon_version=$VERSION" >> "$GITHUB_ENV"
 
-      - name: Set build metadata
-        run: echo "created=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$GITHUB_ENV"
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@master
         with:
@@ -55,7 +52,6 @@ jobs:
           build-args: |
             VERSION=${{ env.genmon_version }}
             REVISION=${{ github.sha }}
-            CREATED=${{ env.created }}
           tags: |
             bigbeartechworld/big-bear-genmon:latest
             bigbeartechworld/big-bear-genmon:${{ env.genmon_version }}
