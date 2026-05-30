@@ -49,6 +49,9 @@ jobs:
           platforms: linux/amd64,linux/arm64
           context: ./Apps/nextcloud-with-smbclient
           file: ./Apps/nextcloud-with-smbclient/Dockerfile
+          build-args: |
+            VERSION=${{ env.nextcloud_with_smbclient_version }}
+            REVISION=${{ github.sha }}
           tags: |
             bigbeartechworld/big-bear-nextcloud-with-smbclient:latest
             bigbeartechworld/big-bear-nextcloud-with-smbclient:${{ env.nextcloud_with_smbclient_version }}

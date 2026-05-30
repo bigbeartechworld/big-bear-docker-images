@@ -49,6 +49,9 @@ jobs:
           platforms: linux/amd64,linux/arm64
           context: ./Apps/pocketbase
           file: ./Apps/pocketbase/Dockerfile
+          build-args: |
+            VERSION=${{ env.pocketbase_version }}
+            REVISION=${{ github.sha }}
           tags: |
             bigbeartechworld/big-bear-pocketbase:latest
             bigbeartechworld/big-bear-pocketbase:${{ env.pocketbase_version }}

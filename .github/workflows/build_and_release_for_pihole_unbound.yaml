@@ -53,6 +53,9 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           context: ./Apps/pihole-unbound
           file: ./Apps/pihole-unbound/Dockerfile
+          build-args: |
+            VERSION=${{ env.pihole_unbound_version }}
+            REVISION=${{ github.sha }}
           tags: |
             bigbeartechworld/big-bear-pihole-unbound:latest
             bigbeartechworld/big-bear-pihole-unbound:${{ env.pihole_unbound_version }}

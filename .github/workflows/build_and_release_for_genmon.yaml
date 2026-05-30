@@ -49,6 +49,9 @@ jobs:
           platforms: linux/amd64,linux/arm64
           context: ./Apps/genmon
           file: ./Apps/genmon/Dockerfile
+          build-args: |
+            VERSION=${{ env.genmon_version }}
+            REVISION=${{ github.sha }}
           tags: |
             bigbeartechworld/big-bear-genmon:latest
             bigbeartechworld/big-bear-genmon:${{ env.genmon_version }}

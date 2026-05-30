@@ -21,6 +21,18 @@ RUN wget https://github.com/pocketbase/pocketbase/releases/download/v${POCKETBAS
 # Make the binary executable
 RUN chmod +x /app/pocketbase
 
+# OCI Image Labels
+ARG VERSION
+ARG REVISION
+LABEL org.opencontainers.image.title="Big Bear PocketBase" \
+      org.opencontainers.image.description="PocketBase open source backend in a single file" \
+      org.opencontainers.image.url="https://github.com/bigbeartechworld/big-bear-docker-images" \
+      org.opencontainers.image.source="https://github.com/bigbeartechworld/big-bear-docker-images" \
+      org.opencontainers.image.vendor="BigBearTechWorld" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${REVISION}"
+
 # Expose the default Pocketbase port
 EXPOSE 8090
 

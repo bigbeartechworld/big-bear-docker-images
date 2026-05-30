@@ -49,6 +49,9 @@ jobs:
           platforms: linux/amd64,linux/arm64
           context: ./Apps/fastfetch
           file: ./Apps/fastfetch/Dockerfile
+          build-args: |
+            VERSION=${{ env.fastfetch_version }}
+            REVISION=${{ github.sha }}
           tags: |
             bigbeartechworld/big-bear-fastfetch:latest
             bigbeartechworld/big-bear-fastfetch:${{ env.fastfetch_version }}

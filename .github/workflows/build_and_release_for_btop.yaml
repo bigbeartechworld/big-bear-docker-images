@@ -49,6 +49,9 @@ jobs:
           platforms: linux/amd64,linux/arm64
           context: ./Apps/btop
           file: ./Apps/btop/Dockerfile
+          build-args: |
+            VERSION=${{ env.btop_version }}
+            REVISION=${{ github.sha }}
           tags: |
             bigbeartechworld/big-bear-btop:latest
             bigbeartechworld/big-bear-btop:${{ env.btop_version }}

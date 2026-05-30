@@ -49,6 +49,9 @@ jobs:
           platforms: linux/amd64,linux/arm64
           context: ./Apps/ncdu
           file: ./Apps/ncdu/Dockerfile
+          build-args: |
+            VERSION=${{ env.ncdu_version }}
+            REVISION=${{ github.sha }}
           tags: |
             bigbeartechworld/big-bear-ncdu:latest
             bigbeartechworld/big-bear-ncdu:${{ env.ncdu_version }}
