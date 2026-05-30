@@ -92,6 +92,11 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.IMAGE_NAME }}
+          labels: |
+            org.opencontainers.image.title=Big Bear MinIO
+            org.opencontainers.image.description=MinIO high-performance S3-compatible object storage server
+            org.opencontainers.image.vendor=BigBearTechWorld
+            org.opencontainers.image.licenses=MIT
           tags: |
             # Always tag as 'latest' for the most recent build
             type=raw,value=latest

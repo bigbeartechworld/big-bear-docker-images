@@ -31,6 +31,20 @@ RUN chmod +x /usr/bin/entrypoint.sh
 RUN mkdir -p /data && \
     chown -R minio:minio /data
 
+# OCI Image Labels
+ARG VERSION
+ARG REVISION
+ARG CREATED
+LABEL org.opencontainers.image.title="Big Bear MinIO" \
+      org.opencontainers.image.description="MinIO high-performance S3-compatible object storage server" \
+      org.opencontainers.image.url="https://github.com/bigbeartechworld/big-bear-docker-images" \
+      org.opencontainers.image.source="https://github.com/bigbeartechworld/big-bear-docker-images" \
+      org.opencontainers.image.vendor="BigBearTechWorld" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${REVISION}" \
+      org.opencontainers.image.created="${CREATED}"
+
 # Expose MinIO ports
 # 9000 - API port
 # 9001 - Console port

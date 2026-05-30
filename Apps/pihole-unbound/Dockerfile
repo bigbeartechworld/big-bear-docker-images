@@ -23,6 +23,20 @@ COPY pihole/setupVars.conf /etc/pihole/setupVars.conf
 COPY unbound/start-unbound.sh /start-unbound.sh
 RUN chmod +x /start-unbound.sh
 
+# OCI Image Labels
+ARG VERSION
+ARG REVISION
+ARG CREATED
+LABEL org.opencontainers.image.title="Big Bear Pi-hole with Unbound" \
+      org.opencontainers.image.description="Pi-hole ad blocker integrated with Unbound recursive DNS resolver" \
+      org.opencontainers.image.url="https://github.com/bigbeartechworld/big-bear-docker-images" \
+      org.opencontainers.image.source="https://github.com/bigbeartechworld/big-bear-docker-images" \
+      org.opencontainers.image.vendor="BigBearTechWorld" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${REVISION}" \
+      org.opencontainers.image.created="${CREATED}"
+
 # Entrypoint - using the absolute path with brackets
 ENTRYPOINT ["/start-unbound.sh"]
 

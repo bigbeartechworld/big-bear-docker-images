@@ -28,6 +28,9 @@ jobs:
           [[ "$VERSION" =~ ^[0-9A-Za-z._-]+$ ]] || { echo "Invalid VERSION: $VERSION"; exit 1; }
           echo "big_bear_casaos_user_management_version=$VERSION" >> "$GITHUB_ENV"
 
+      - name: Set build metadata
+        run: echo "created=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$GITHUB_ENV"
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@master
         with:
@@ -49,6 +52,10 @@ jobs:
           platforms: linux/amd64,linux/arm64
           context: ./Apps/big-bear-casaos-user-management
           file: ./Apps/big-bear-casaos-user-management/Dockerfile
+          build-args: |
+            VERSION=${{ env.big_bear_casaos_user_management_version }}
+            REVISION=${{ github.sha }}
+            CREATED=${{ env.created }}
           tags: |
             bigbeartechworld/big-bear-casaos-user-management:latest
             bigbeartechworld/big-bear-casaos-user-management:${{ env.big_bear_casaos_user_management_version }}

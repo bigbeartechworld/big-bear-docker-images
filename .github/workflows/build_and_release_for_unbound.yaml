@@ -127,6 +127,11 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.IMAGE_NAME }}
+          labels: |
+            org.opencontainers.image.title=Big Bear Unbound
+            org.opencontainers.image.description=Unbound DNS recursive resolver for privacy-focused DNS resolution
+            org.opencontainers.image.vendor=BigBearTechWorld
+            org.opencontainers.image.licenses=MIT
 
       - name: Build and Push by Digest
         id: build
@@ -187,6 +192,11 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.IMAGE_NAME }}
+          labels: |
+            org.opencontainers.image.title=Big Bear Unbound
+            org.opencontainers.image.description=Unbound DNS recursive resolver for privacy-focused DNS resolution
+            org.opencontainers.image.vendor=BigBearTechWorld
+            org.opencontainers.image.licenses=MIT
           tags: |
             # Always tag as 'latest' for the most recent build
             type=raw,value=latest

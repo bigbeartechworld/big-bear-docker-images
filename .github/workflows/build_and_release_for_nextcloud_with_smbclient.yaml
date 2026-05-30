@@ -28,6 +28,9 @@ jobs:
           [[ "$VERSION" =~ ^[0-9A-Za-z._-]+$ ]] || { echo "Invalid VERSION: $VERSION"; exit 1; }
           echo "nextcloud_with_smbclient_version=$VERSION" >> "$GITHUB_ENV"
 
+      - name: Set build metadata
+        run: echo "created=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$GITHUB_ENV"
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@master
         with:
@@ -49,6 +52,10 @@ jobs:
           platforms: linux/amd64,linux/arm64
           context: ./Apps/nextcloud-with-smbclient
           file: ./Apps/nextcloud-with-smbclient/Dockerfile
+          build-args: |
+            VERSION=${{ env.nextcloud_with_smbclient_version }}
+            REVISION=${{ github.sha }}
+            CREATED=${{ env.created }}
           tags: |
             bigbeartechworld/big-bear-nextcloud-with-smbclient:latest
             bigbeartechworld/big-bear-nextcloud-with-smbclient:${{ env.nextcloud_with_smbclient_version }}
