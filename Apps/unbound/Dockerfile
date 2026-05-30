@@ -55,19 +55,13 @@ RUN ./configure \
 # ==============================================================================
 FROM debian:bookworm-slim
 
-# OCI Image Labels
-ARG VERSION
-ARG REVISION
-ARG CREATED
+# OCI Image Labels (version/revision/created/source injected by docker/metadata-action in CI)
 LABEL org.opencontainers.image.title="Big Bear Unbound" \
       org.opencontainers.image.description="Unbound DNS recursive resolver for privacy-focused DNS resolution" \
       org.opencontainers.image.url="https://github.com/bigbeartechworld/big-bear-docker-images" \
       org.opencontainers.image.source="https://github.com/bigbeartechworld/big-bear-docker-images" \
       org.opencontainers.image.vendor="BigBearTechWorld" \
-      org.opencontainers.image.licenses="MIT" \
-      org.opencontainers.image.version="${VERSION}" \
-      org.opencontainers.image.revision="${REVISION}" \
-      org.opencontainers.image.created="${CREATED}"
+      org.opencontainers.image.licenses="BSD-3-Clause"
 
 # Install runtime dependencies and dnsutils for healthcheck
 # curl is needed by entrypoint to download root.hints if volume mount overwrites it
