@@ -1,0 +1,33 @@
+{
+  "name": "Odysseus",
+  "description": "Self-hosted AI workspace (FastAPI) built from upstream source",
+  "version": "latest",
+  "category": "AI",
+  "tags": ["ai", "llm", "self-hosted", "fastapi", "workspace"],
+  "platform": "linux/amd64,linux/arm64",
+  "logo": "",
+  "documentation": "https://github.com/pewdiepie-archdaemon/odysseus",
+  "github": "https://github.com/pewdiepie-archdaemon/odysseus",
+  "ports": {
+    "7000/tcp": "Odysseus Web UI / API"
+  },
+  "volumes": {
+    "/app/data": "Application data (db, prefs, cache)",
+    "/app/logs": "Application logs"
+  },
+  "environment": {
+    "PUID": { "description": "User ID to drop to", "default": "1000" },
+    "PGID": { "description": "Group ID to drop to", "default": "1000" },
+    "AUTH_ENABLED": { "description": "Require login", "default": "true" },
+    "ODYSSEUS_ADMIN_PASSWORD": { "description": "Admin password (insecure default - must be changed before exposure)", "default": "changeme" },
+    "SEARXNG_INSTANCE": { "description": "SearXNG base URL", "default": "http://searxng:8080" },
+    "CHROMADB_HOST": { "description": "ChromaDB host", "default": "chromadb" },
+    "CHROMADB_PORT": { "description": "ChromaDB port", "default": "8000" }
+  },
+  "notes": [
+    "Built from upstream Odysseus source (no pre-built upstream image).",
+    "ODYSSEUS_ADMIN_PASSWORD becomes the real admin password - the default is insecure, change it before exposing the app.",
+    "Full stack (chromadb/searxng/ntfy) ships via docker-compose.yml.",
+    "LLM provider (Ollama/OpenAI) is user-supplied via env."
+  ]
+}

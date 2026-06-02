@@ -1,0 +1,100 @@
+services:
+  big-bear-odysseus:
+    image: bigbeartechworld/big-bear-odysseus:latest
+    container_name: big-bear-odysseus
+    restart: unless-stopped
+    ports:
+      - "7000:7000"
+    environment:
+      PUID: 1000
+      PGID: 1000
+      AUTH_ENABLED: "true"
+      # Set ODYSSEUS_ADMIN_PASSWORD in .env to override the insecure default
+      ODYSSEUS_ADMIN_PASSWORD: ${ODYSSEUS_ADMIN_PASSWORD:-changeme}
+      SEARXNG_INSTANCE: http://searxng:8080
+      CHROMADB_HOST: chromadb
+      CHROMADB_PORT: 8000
+    volumes:
+      - big_bear_odysseus_data:/app/data
+      - big_bear_odysseus_logs:/app/logs
+    depends_on:
+      searxng:
+        condition: service_healthy
+      chromadb:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: big-bear-odysseus-chromadb
+    restart: unless-stopped
+    environment:
+      ANONYMIZED_TELEMETRY: "FALSE"
+    volumes:
+      - big_bear_odysseus_chromadb:/chroma/chroma
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: big-bear-odysseus-searxng
+    restart: unless-stopped
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        if [ ! -s /etc/searxng/settings.yml ] || grep -q '__SEARXNG_SECRET__' /etc/searxng/settings.yml; then
+          secret="$${SEARXNG_SECRET:-}"
+          if [ -z "$$secret" ]; then
+            secret="$$(python -c 'import secrets; print(secrets.token_urlsafe(48))')"
+          fi
+          sed "s|__SEARXNG_SECRET__|$$secret|g" /tmp/searxng-settings.yml.template > /etc/searxng/settings.yml
+        fi
+        exec /usr/local/searxng/entrypoint.sh
+    environment:
+      SEARXNG_BASE_URL: http://localhost:8080/
+      SEARXNG_SECRET: ${SEARXNG_SECRET:-}
+    volumes:
+      - big_bear_odysseus_searxng:/etc/searxng
+      - ../config/searxng/settings.yml:/tmp/searxng-settings.yml.template:ro,z
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/', timeout=5).read(1)\""]
+      interval: 5s
+      timeout: 6s
+      retries: 20
+      start_period: 10s
+
+  ntfy:
+    image: binwiederhier/ntfy:latest
+    container_name: big-bear-odysseus-ntfy
+    restart: unless-stopped
+    command: serve
+    ports:
+      - "${NTFY_BIND:-127.0.0.1}:8091:80"
+    environment:
+      NTFY_BASE_URL: ${NTFY_BASE_URL:-http://localhost:8091}
+    volumes:
+      - big_bear_odysseus_ntfy:/var/cache/ntfy
+
+volumes:
+  big_bear_odysseus_data:
+    driver: local
+  big_bear_odysseus_logs:
+    driver: local
+  big_bear_odysseus_chromadb:
+    driver: local
+  big_bear_odysseus_searxng:
+    driver: local
+  big_bear_odysseus_ntfy:
+    driver: local

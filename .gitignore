@@ -21,5 +21,8 @@ github.secrets
 # IDE specific
 .vscode/
 
+# Local docs
+docs/
+
 # Unbound
 unbound/*

@@ -1,0 +1,8 @@
+{
+  "id": "odysseus",
+  "name": "Odysseus",
+  "version": "latest",
+  "image": "bigbeartechworld/big-bear-odysseus",
+  "youtube": "",
+  "docs_link": "https://github.com/pewdiepie-archdaemon/odysseus"
+}
