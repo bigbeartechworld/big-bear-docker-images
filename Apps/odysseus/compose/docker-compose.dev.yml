@@ -1,7 +1,6 @@
 services:
   big-bear-odysseus:
-    build: ../
-    image: bigbeartechworld/big-bear-odysseus:dev
+    image: bigbeartechworld/big-bear-odysseus:latest
     container_name: big-bear-odysseus-dev
     restart: unless-stopped
     ports:

@@ -1,8 +1,6 @@
 services:
   big-bear-odysseus:
-    build: ../
     image: bigbeartechworld/big-bear-odysseus:latest
-    # For production, pin: image: bigbeartechworld/big-bear-odysseus:2026.06.01-<sha>
     container_name: big-bear-odysseus
     restart: unless-stopped
     ports:

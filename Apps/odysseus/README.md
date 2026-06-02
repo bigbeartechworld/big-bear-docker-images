@@ -25,7 +25,7 @@ Open `http://localhost:7000`. The stack also starts ChromaDB, SearXNG, and ntfy.
 | --- | --- | --- |
 | `PUID` / `PGID` | `1000` | User/group the process drops to |
 | `AUTH_ENABLED` | `true` | Require login |
-| `ODYSSEUS_ADMIN_PASSWORD` | `changeme` | **Change before first boot** |
+| `ODYSSEUS_ADMIN_PASSWORD` | `changeme` | **Insecure default - becomes the real admin password, change it** |
 | `SEARXNG_INSTANCE` | `http://searxng:8080` | SearXNG URL |
 | `CHROMADB_HOST` / `CHROMADB_PORT` | `chromadb` / `8000` | Vector store |
 

@@ -87,6 +87,9 @@ jobs:
       contents: write
       packages: write
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
       - name: Clone upstream at revision
         run: |
           git clone https://github.com/${{ env.UPSTREAM_REPO }}.git upstream
