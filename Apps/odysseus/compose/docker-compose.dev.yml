@@ -1,0 +1,44 @@
+services:
+  big-bear-odysseus:
+    build: ../
+    image: bigbeartechworld/big-bear-odysseus:dev
+    container_name: big-bear-odysseus-dev
+    restart: unless-stopped
+    ports:
+      - "7001:7000"
+    environment:
+      PUID: 1000
+      PGID: 1000
+      AUTH_ENABLED: "false"
+      ODYSSEUS_ADMIN_PASSWORD: devpass123
+      SEARXNG_INSTANCE: http://searxng:8080
+      CHROMADB_HOST: chromadb
+      CHROMADB_PORT: 8000
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    depends_on:
+      chromadb:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: big-bear-odysseus-chromadb-dev
+    restart: unless-stopped
+    environment:
+      ANONYMIZED_TELEMETRY: "FALSE"
+    volumes:
+      - ./chromadb-data:/chroma/chroma
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: big-bear-odysseus-searxng-dev
+    restart: unless-stopped
+    volumes:
+      - ./searxng-data:/etc/searxng
