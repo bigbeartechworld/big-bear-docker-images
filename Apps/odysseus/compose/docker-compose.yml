@@ -9,8 +9,8 @@ services:
       PUID: 1000
       PGID: 1000
       AUTH_ENABLED: "true"
-      # CHANGE THIS BEFORE FIRST BOOT
-      ODYSSEUS_ADMIN_PASSWORD: changeme
+      # Set ODYSSEUS_ADMIN_PASSWORD in .env to override the insecure default
+      ODYSSEUS_ADMIN_PASSWORD: ${ODYSSEUS_ADMIN_PASSWORD:-changeme}
       SEARXNG_INSTANCE: http://searxng:8080
       CHROMADB_HOST: chromadb
       CHROMADB_PORT: 8000
