@@ -19,6 +19,8 @@ services:
     depends_on:
       chromadb:
         condition: service_started
+      searxng:
+        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:7000/api/health"]
       interval: 30s
