@@ -1,6 +1,6 @@
 services:
   big-bear-unbound:
-    image: bigbeartechworld/big-bear-unbound:1.24.2
+    image: bigbeartechworld/big-bear-unbound:1.25.1
     container_name: big-bear-unbound
     restart: unless-stopped
     ports:
