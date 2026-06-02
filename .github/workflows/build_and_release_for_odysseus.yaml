@@ -49,17 +49,27 @@ jobs:
           if [ "${{ github.event_name }}" != "schedule" ]; then
             echo "should_build=true" >> "$GITHUB_OUTPUT"; exit 0
           fi
+          ACCEPT="-H accept:application/vnd.oci.image.index.v1+json \
+            -H accept:application/vnd.docker.distribution.manifest.list.v2+json \
+            -H accept:application/vnd.oci.image.manifest.v1+json \
+            -H accept:application/vnd.docker.distribution.manifest.v2+json"
           TOKEN=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${{ env.IMAGE_NAME }}:pull" | jq -r '.token')
-          MANIFEST=$(curl -s -H "Authorization: Bearer ${TOKEN}" \
-            -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
-            -H "Accept: application/vnd.oci.image.manifest.v1+json" \
-            "https://registry-1.docker.io/v2/${{ env.IMAGE_NAME }}/manifests/latest")
+          AUTH="-H authorization:Bearer ${TOKEN}"
+          BASE="https://registry-1.docker.io/v2/${{ env.IMAGE_NAME }}"
+          MANIFEST=$(curl -s $AUTH $ACCEPT "${BASE}/manifests/latest")
           CONFIG_DIGEST=$(echo "$MANIFEST" | jq -r '.config.digest // empty')
           if [ -z "$CONFIG_DIGEST" ]; then
-            echo "No :latest yet, building"; echo "should_build=true" >> "$GITHUB_OUTPUT"; exit 0
+            CHILD=$(echo "$MANIFEST" | jq -r '.manifests[0].digest // empty')
+            if [ -n "$CHILD" ]; then
+              CHILD_MANIFEST=$(curl -s $AUTH $ACCEPT "${BASE}/manifests/${CHILD}")
+              CONFIG_DIGEST=$(echo "$CHILD_MANIFEST" | jq -r '.config.digest // empty')
+            fi
           fi
-          CONFIG=$(curl -sL -H "Authorization: Bearer ${TOKEN}" \
-            "https://registry-1.docker.io/v2/${{ env.IMAGE_NAME }}/blobs/${CONFIG_DIGEST}")
+          if [ -z "$CONFIG_DIGEST" ]; then
+            echo "No published :latest config found, building"
+            echo "should_build=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          CONFIG=$(curl -sL $AUTH "${BASE}/blobs/${CONFIG_DIGEST}")
           LAST_SHA=$(echo "$CONFIG" | jq -r '.config.Labels["org.opencontainers.image.revision"] // empty')
           echo "Last built: ${LAST_SHA:-none}  Upstream: ${{ steps.rev.outputs.sha }}"
           if [ "$LAST_SHA" == "${{ steps.rev.outputs.sha }}" ]; then
@@ -178,9 +188,9 @@ jobs:
 
       - name: Verify non-root
         run: |
-          U=$(docker exec odysseus-test sh -c 'ps -o user= -p 1' | tr -d ' ')
-          if [ "$U" == "root" ] || [ -z "$U" ]; then echo "root!"; exit 1; fi
-          echo "non-root: $U"
+          UID1=$(docker exec odysseus-test sh -c 'ps -o uid= -p 1' | tr -d ' ')
+          if [ "$UID1" == "0" ] || [ -z "$UID1" ]; then echo "running as root (uid $UID1)"; exit 1; fi
+          echo "non-root uid: $UID1"
 
       - name: Logs + cleanup
         if: always()
