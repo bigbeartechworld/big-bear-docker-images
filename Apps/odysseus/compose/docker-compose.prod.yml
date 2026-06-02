@@ -67,6 +67,10 @@ services:
     container_name: big-bear-odysseus-ntfy-prod
     restart: always
     command: serve
+    ports:
+      - "${NTFY_BIND:-127.0.0.1}:8091:80"
+    environment:
+      NTFY_BASE_URL: ${NTFY_BASE_URL:-http://localhost:8091}
     volumes:
       - big_bear_odysseus_ntfy_prod:/var/cache/ntfy
 
