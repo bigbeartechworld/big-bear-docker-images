@@ -21,16 +21,20 @@ echo -e "${YELLOW}Cloning upstream@${REF}...${NC}"
 git clone --depth 1 --branch "$REF" "$UPSTREAM_REPO" "$WORKDIR" 2>/dev/null \
   || { git clone "$UPSTREAM_REPO" "$WORKDIR"; git -C "$WORKDIR" checkout "$REF"; }
 
+LOG="$WORKDIR/docker.log"
+
 echo -e "${YELLOW}Test 1: Build image...${NC}"
-docker build -t "$IMAGE" "$WORKDIR" > /dev/null 2>&1 && BUILD_RC=0 || BUILD_RC=$?
-print_test $BUILD_RC "Image builds"
+docker build -t "$IMAGE" "$WORKDIR" > "$LOG" 2>&1 && BUILD_RC=0 || BUILD_RC=$?
+[ "$BUILD_RC" -ne 0 ] && cat "$LOG"
+print_test "$BUILD_RC" "Image builds"
 
 echo -e "${YELLOW}Test 2: Start container...${NC}"
 docker run -d --name odysseus-test \
     -p 7000:7000 \
     -e ODYSSEUS_ADMIN_PASSWORD=testpass123 \
-    "$IMAGE" > /dev/null 2>&1 && RUN_RC=0 || RUN_RC=$?
-print_test $RUN_RC "Container started"
+    "$IMAGE" > "$LOG" 2>&1 && RUN_RC=0 || RUN_RC=$?
+[ "$RUN_RC" -ne 0 ] && cat "$LOG"
+print_test "$RUN_RC" "Container started"
 
 echo -e "${YELLOW}Waiting for /api/health...${NC}"
 READY=1

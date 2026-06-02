@@ -87,8 +87,6 @@ jobs:
     needs: resolve
     if: needs.resolve.outputs.should_build == 'true'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Checkout Repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -147,29 +145,6 @@ jobs:
           repository: ${{ env.IMAGE_NAME }}
           readme-filepath: Apps/odysseus/README.md
 
-      - name: Create GitHub Release
-        if: github.event_name == 'workflow_dispatch'
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
-        with:
-          tag_name: odysseus-${{ needs.resolve.outputs.date }}-${{ needs.resolve.outputs.short_sha }}
-          name: Odysseus ${{ needs.resolve.outputs.date }}
-          body: |
-            ## Odysseus Docker Image
-
-            Built from upstream commit `${{ needs.resolve.outputs.sha }}`.
-
-            ### Images
-            - `${{ env.IMAGE_NAME }}:latest`
-            - `${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.date }}-${{ needs.resolve.outputs.short_sha }}`
-
-            ```bash
-            docker pull ${{ env.IMAGE_NAME }}:latest
-            ```
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   test-image:
     name: Test Image
     needs: [resolve, build-and-push]
@@ -204,3 +179,33 @@ jobs:
       - name: Logs + cleanup
         if: always()
         run: docker logs odysseus-test || true; docker rm -f odysseus-test || true
+
+  release:
+    name: Create GitHub Release
+    needs: [resolve, test-image]
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          tag_name: odysseus-${{ needs.resolve.outputs.date }}-${{ needs.resolve.outputs.short_sha }}
+          name: Odysseus ${{ needs.resolve.outputs.date }}
+          body: |
+            ## Odysseus Docker Image
+
+            Built from upstream commit `${{ needs.resolve.outputs.sha }}`.
+
+            ### Images
+            - `${{ env.IMAGE_NAME }}:latest`
+            - `${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.date }}-${{ needs.resolve.outputs.short_sha }}`
+
+            ```bash
+            docker pull ${{ env.IMAGE_NAME }}:latest
+            ```
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
