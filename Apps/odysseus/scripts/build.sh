@@ -14,7 +14,7 @@ for arg in "$@"; do
         REF="$arg"
     fi
 done
-VERSION=$(cat "$(dirname "$0")/../config/VERSION")
+VERSION=$(date -u +%Y.%m.%d)
 PLATFORMS="linux/amd64,linux/arm64"
 
 echo -e "${GREEN}Building Odysseus Docker Image${NC}"
