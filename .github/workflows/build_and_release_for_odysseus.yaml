@@ -1,0 +1,187 @@
+name: "Build and release for odysseus"
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Upstream ref to build (default: main)'
+        required: false
+        default: 'main'
+  schedule:
+    - cron: '0 2 * * 1'
+  push:
+    branches:
+      - main
+    paths:
+      - 'Apps/odysseus/**'
+      - '.github/workflows/build_and_release_for_odysseus.yaml'
+
+env:
+  IMAGE_NAME: bigbeartechworld/big-bear-odysseus
+  UPSTREAM_REPO: pewdiepie-archdaemon/odysseus
+
+jobs:
+  resolve:
+    name: Resolve Upstream Revision
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.rev.outputs.sha }}
+      short_sha: ${{ steps.rev.outputs.short_sha }}
+      date: ${{ steps.rev.outputs.date }}
+      should_build: ${{ steps.guard.outputs.should_build }}
+    steps:
+      - name: Resolve upstream main SHA
+        id: rev
+        env:
+          INPUT_REF: ${{ github.event.inputs.ref || 'main' }}
+        run: |
+          REF="${INPUT_REF}"
+          SHA=$(curl -s "https://api.github.com/repos/${{ env.UPSTREAM_REPO }}/commits/${REF}" | jq -r '.sha')
+          if [ -z "$SHA" ] || [ "$SHA" == "null" ]; then echo "Failed to resolve SHA"; exit 1; fi
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${SHA:0:7}" >> "$GITHUB_OUTPUT"
+          echo "date=$(date -u +%Y.%m.%d)" >> "$GITHUB_OUTPUT"
+          echo "Upstream ${REF} = ${SHA}"
+
+      - name: Guard - build only when revision changed
+        id: guard
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          TOKEN=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${{ env.IMAGE_NAME }}:pull" | jq -r '.token')
+          MANIFEST=$(curl -s -H "Authorization: Bearer ${TOKEN}" \
+            -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+            -H "Accept: application/vnd.oci.image.manifest.v1+json" \
+            "https://registry-1.docker.io/v2/${{ env.IMAGE_NAME }}/manifests/latest")
+          CONFIG_DIGEST=$(echo "$MANIFEST" | jq -r '.config.digest // empty')
+          if [ -z "$CONFIG_DIGEST" ]; then
+            echo "No :latest yet, building"; echo "should_build=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          CONFIG=$(curl -sL -H "Authorization: Bearer ${TOKEN}" \
+            "https://registry-1.docker.io/v2/${{ env.IMAGE_NAME }}/blobs/${CONFIG_DIGEST}")
+          LAST_SHA=$(echo "$CONFIG" | jq -r '.config.Labels["org.opencontainers.image.revision"] // empty')
+          echo "Last built: ${LAST_SHA:-none}  Upstream: ${{ steps.rev.outputs.sha }}"
+          if [ "$LAST_SHA" == "${{ steps.rev.outputs.sha }}" ]; then
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-and-push:
+    name: Build and Push
+    needs: resolve
+    if: needs.resolve.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Clone upstream at revision
+        run: |
+          git clone https://github.com/${{ env.UPSTREAM_REPO }}.git upstream
+          git -C upstream checkout ${{ needs.resolve.outputs.sha }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          labels: |
+            org.opencontainers.image.title=Big Bear Odysseus
+            org.opencontainers.image.description=Self-hosted AI workspace built from upstream Odysseus source
+            org.opencontainers.image.vendor=BigBearTechWorld
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.revision=${{ needs.resolve.outputs.sha }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=${{ needs.resolve.outputs.date }}
+            type=raw,value=${{ needs.resolve.outputs.date }}-${{ needs.resolve.outputs.short_sha }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: upstream
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Update Docker Hub Description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ env.IMAGE_NAME }}
+          readme-filepath: Apps/odysseus/README.md
+
+      - name: Create GitHub Release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: odysseus-${{ needs.resolve.outputs.date }}-${{ needs.resolve.outputs.short_sha }}
+          name: Odysseus ${{ needs.resolve.outputs.date }}
+          body: |
+            ## Odysseus Docker Image
+
+            Built from upstream commit `${{ needs.resolve.outputs.sha }}`.
+
+            ### Images
+            - `${{ env.IMAGE_NAME }}:latest`
+            - `${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.date }}-${{ needs.resolve.outputs.short_sha }}`
+
+            ```bash
+            docker pull ${{ env.IMAGE_NAME }}:latest
+            ```
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  test-image:
+    name: Test Image
+    needs: [resolve, build-and-push]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull image
+        run: docker pull ${{ env.IMAGE_NAME }}:latest
+
+      - name: Start container
+        run: |
+          docker run -d --name odysseus-test -p 7000:7000 \
+            -e ODYSSEUS_ADMIN_PASSWORD=ci-test-pass \
+            ${{ env.IMAGE_NAME }}:latest
+
+      - name: Wait for /api/health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:7000/api/health > /dev/null 2>&1; then
+              echo "healthy"; exit 0
+            fi
+            sleep 2
+          done
+          echo "never healthy"; docker logs odysseus-test; exit 1
+
+      - name: Verify non-root
+        run: |
+          U=$(docker exec odysseus-test sh -c 'ps -o user= -p 1' | tr -d ' ')
+          if [ "$U" == "root" ] || [ -z "$U" ]; then echo "root!"; exit 1; fi
+          echo "non-root: $U"
+
+      - name: Logs + cleanup
+        if: always()
+        run: docker logs odysseus-test || true; docker rm -f odysseus-test || true
