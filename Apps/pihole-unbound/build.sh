@@ -2,7 +2,7 @@
 
 # Set image name and tag
 IMAGE_NAME="bigbeartechworld/big-bear-pihole-unbound"
-TAG="2026.06.0"
+TAG="2026.07.1"
 
 # Check if docker is installed
 if ! command -v docker &> /dev/null; then
