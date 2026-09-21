@@ -1,6 +1,6 @@
 # Big Bear Odysseus
 
-A self-hosted AI workspace (Python/FastAPI) packaged as a Docker image, built from the upstream [Odysseus](https://github.com/pewdiepie-archdaemon/odysseus) source.
+A self-hosted AI workspace (Python/FastAPI) packaged as a Docker image, built from the upstream [Odysseus](https://github.com/odysseus-dev/odysseus) source.
 
 ## Image
 

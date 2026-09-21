@@ -6,8 +6,8 @@
   "tags": ["ai", "llm", "self-hosted", "fastapi", "workspace"],
   "platform": "linux/amd64,linux/arm64",
   "logo": "",
-  "documentation": "https://github.com/pewdiepie-archdaemon/odysseus",
-  "github": "https://github.com/pewdiepie-archdaemon/odysseus",
+  "documentation": "https://github.com/odysseus-dev/odysseus",
+  "github": "https://github.com/odysseus-dev/odysseus",
   "ports": {
     "7000/tcp": "Odysseus Web UI / API"
   },
