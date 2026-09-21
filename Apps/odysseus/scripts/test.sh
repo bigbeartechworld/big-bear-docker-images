@@ -3,7 +3,7 @@ set -e
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
 IMAGE="bigbeartechworld/big-bear-odysseus:test"
-UPSTREAM_REPO="https://github.com/pewdiepie-archdaemon/odysseus.git"
+UPSTREAM_REPO="https://github.com/odysseus-dev/odysseus.git"
 REF="${1:-main}"
 
 print_test() { if [ "$1" -eq 0 ]; then echo -e "${GREEN}✓${NC} $2"; else echo -e "${RED}✗${NC} $2"; exit 1; fi; }
