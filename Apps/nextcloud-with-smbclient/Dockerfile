@@ -1,4 +1,4 @@
-FROM nextcloud:35.0.0-apache
+FROM nextcloud:35.0.1-apache
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
