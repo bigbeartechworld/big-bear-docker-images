@@ -17,7 +17,7 @@ docker pull bigbeartechworld/<image-name>
 | Big Bear CasaOS User Management | bigbeartechworld/big-bear-casaos-user-management | 0.1.0 | [YouTube Video](https://youtu.be/-a9k8fLAbRE) | [Docs](https://community.bigbeartechworld.com/t/added-bigbearcasaos-user-management-to-bigbearcasaos/2227?u=dragonfire1119) |
 | BTOP | bigbeartechworld/big-bear-btop | 0.1.11 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt96nLpa72tqLIGl54gSmSAS) |  |
 | FastFetch | bigbeartechworld/big-bear-fastfetch | 0.0.5 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt_o9i99IYOCVKfWkBvErgth) |  |
-| Genmon | bigbeartechworld/big-bear-genmon | 2.0.01 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt_g0nT2F7l0a1gvGZl57CWn) |  |
+| Genmon | bigbeartechworld/big-bear-genmon | 2.0.03 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt_g0nT2F7l0a1gvGZl57CWn) |  |
 | NCDU | bigbeartechworld/big-bear-ncdu | 0.0.10 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt9Au1cUiVkyx25bOxAbhF83) |  |
 | Nextcloud with SMBClient | bigbeartechworld/big-bear-nextcloud-with-smbclient | 35.0.1 | [YouTube Video](https://www.youtube.com/playlist?list=PL2RAscIdkpt9Au1cUiVkyx25bOxAbhF83) |  |
 | Odysseus | bigbeartechworld/big-bear-odysseus | latest |  | [Docs](https://github.com/odysseus-dev/odysseus) |
