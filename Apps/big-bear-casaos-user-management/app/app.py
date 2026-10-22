@@ -8,8 +8,14 @@ import os
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key'
 
-ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'YOUR_SECURE_PASSWORD')
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', '')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '')
+
+if not ADMIN_USERNAME.strip() or not ADMIN_PASSWORD.strip():
+    raise RuntimeError('Set nonempty ADMIN_USERNAME and ADMIN_PASSWORD before starting the application.')
+
+if ADMIN_PASSWORD in {'casaos', 'YOUR_SECURE_PASSWORD'}:
+    raise RuntimeError('ADMIN_PASSWORD must replace the public example password.')
 
 def check_auth(username, password):
     """Verify admin credentials"""
@@ -38,6 +44,7 @@ def index():
     return render_template('index.html', users=users)
 
 @app.route('/add_user', methods=['POST'])
+@requires_auth
 def add_user_route():
     username = request.form.get('username')
     password = request.form.get('password')
@@ -46,6 +53,7 @@ def add_user_route():
     return redirect(url_for('index'))
 
 @app.route('/edit_password', methods=['POST'])
+@requires_auth
 def edit_password_route():
     user_id = request.form.get('user_id')
     new_password = request.form.get('new_password')
@@ -54,6 +62,7 @@ def edit_password_route():
     return redirect(url_for('index'))
 
 @app.route('/remove_user', methods=['POST'])
+@requires_auth
 def remove_user_route():
     user_id = request.form.get('user_id')
     if remove_user(user_id):

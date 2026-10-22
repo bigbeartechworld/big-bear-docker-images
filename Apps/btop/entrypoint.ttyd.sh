@@ -14,6 +14,8 @@ export HOME=/root
 
 # Check if authentication is enabled
 if [ "$TTYD_AUTH_ENABLED" = "true" ]; then
+    : "${TTYD_AUTH_USER:?Set TTYD_AUTH_USER}"
+    : "${TTYD_AUTH_PASS:?Set TTYD_AUTH_PASS}"
     # Execute command with authentication (using quoted arguments for security)
     exec ttyd -p 7681 -W -c "${TTYD_AUTH_USER}:${TTYD_AUTH_PASS}" btop
 else

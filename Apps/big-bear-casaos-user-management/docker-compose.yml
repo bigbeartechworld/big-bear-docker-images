@@ -34,9 +34,9 @@ services:
       # Enable Flask debug mode
       - FLASK_DEBUG=1
       # Specifies the admin username for the service
-      - ADMIN_USERNAME=casaos
+      - "ADMIN_USERNAME=${ADMIN_USERNAME:?Set ADMIN_USERNAME}"
       # Specifies the admin password for the service
-      - ADMIN_PASSWORD=casaos
+      - "ADMIN_PASSWORD=${ADMIN_PASSWORD:?Set ADMIN_PASSWORD}"
 
     # Grants the container extended privileges, necessary for some operations
     privileged: true

@@ -7,9 +7,8 @@ services:
       - "9000:9000"   # MinIO API
       - "9001:9001"   # MinIO Console (Web UI)
     environment:
-      # CHANGE THESE VALUES IN PRODUCTION!
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-changeme123}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
       # Optional production settings
       MINIO_BROWSER: ${MINIO_BROWSER:-on}
       MINIO_REGION: ${MINIO_REGION:-us-east-1}

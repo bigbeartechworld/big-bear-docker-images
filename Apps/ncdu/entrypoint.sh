@@ -5,6 +5,8 @@ export HOME=/root
 
 # Check if authentication is enabled
 if [ "$GOTTY_AUTH_ENABLED" = "true" ]; then
+    : "${GOTTY_AUTH_USER:?Set GOTTY_AUTH_USER}"
+    : "${GOTTY_AUTH_PASS:?Set GOTTY_AUTH_PASS}"
     # Execute command with authentication (using quoted arguments for security)
     exec gotty -p 7681 -w -c "${GOTTY_AUTH_USER}:${GOTTY_AUTH_PASS}" ncdu "${NCDU_PATH}"
 else

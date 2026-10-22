@@ -10,8 +10,8 @@ services:
     # Environment variables for authentication
     environment:
       - NCDU_PATH=/
-      - GOTTY_AUTH_USER=bigbear
-      - GOTTY_AUTH_PASS=password
+      - "GOTTY_AUTH_USER=${GOTTY_AUTH_USER:?Set GOTTY_AUTH_USER}"
+      - "GOTTY_AUTH_PASS=${GOTTY_AUTH_PASS:?Set GOTTY_AUTH_PASS}"
       - GOTTY_AUTH_ENABLED=true
     # Run the container in privileged mode to allow access to system metrics
     privileged: true
