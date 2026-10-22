@@ -32,6 +32,7 @@ echo "Building and pushing multi-architecture image: $IMAGE_NAME:$TAG"
 docker buildx build \
     --progress plain \
     --platform linux/amd64,linux/arm64,linux/arm/v7 \
+    --build-arg "UNBOUND_VERSION=$VERSION" \
     -t "$IMAGE_NAME:$TAG" \
     -t "$IMAGE_NAME:latest" \
     . --push > build.log 2>&1

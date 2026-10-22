@@ -70,12 +70,13 @@ APP_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Change to app directory
 cd "$APP_DIR"
+VERSION=$(cat VERSION)
 
 print_section "Build Tests"
 
 # Test 1: Build the Docker image
 echo -e "${YELLOW}Test 1: Building Docker image...${NC}"
-if docker build -t "${IMAGE_NAME}:${IMAGE_TAG}" . > /dev/null 2>&1; then
+if docker build --build-arg "UNBOUND_VERSION=$VERSION" -t "${IMAGE_NAME}:${IMAGE_TAG}" . > /dev/null 2>&1; then
     print_test 0 "Docker image built successfully"
     REMOVE_IMAGE="true"
 else
@@ -102,7 +103,7 @@ fi
 # Test 4: Check Unbound version
 echo -e "${YELLOW}Test 4: Checking Unbound version...${NC}"
 VERSION_OUTPUT=$(docker run --rm --user root "${IMAGE_NAME}:${IMAGE_TAG}" unbound -V 2>&1 | head -1 || true)
-if echo "$VERSION_OUTPUT" | grep -q "Version"; then
+if [ "$VERSION_OUTPUT" = "Version $VERSION" ]; then
     print_test 0 "Unbound version retrieved"
     echo -e "  ${BLUE}$VERSION_OUTPUT${NC}"
 else
