@@ -7,7 +7,7 @@ FROM debian:bookworm-slim AS builder
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Unbound version to build
-ARG UNBOUND_VERSION=1.24.2
+ARG UNBOUND_VERSION=1.26.2
 
 # Install build dependencies
 RUN apt-get update && \

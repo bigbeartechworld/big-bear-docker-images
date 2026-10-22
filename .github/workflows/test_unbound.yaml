@@ -57,10 +57,15 @@ jobs:
           tags: |
             type=sha,prefix=test-
 
+      - name: Read Unbound Version
+        id: version
+        run: echo "version=$(cat ${{ env.DOCKERFILE_PATH }}/VERSION)" >> "$GITHUB_OUTPUT"
+
       - name: Build Docker Image
         uses: docker/build-push-action@v5
         with:
           context: ${{ env.DOCKERFILE_PATH }}
+          build-args: UNBOUND_VERSION=${{ steps.version.outputs.version }}
           load: true
           tags: ${{ env.IMAGE_NAME }}:test
           cache-from: type=gha
@@ -108,8 +113,9 @@ jobs:
       - name: Test - Unbound Version
         run: |
           echo "Testing Unbound version..."
-          docker run --rm --user root ${{ env.IMAGE_NAME }}:test unbound -V
-          echo "✓ Unbound version retrieved"
+          expected=$(cat ${{ env.DOCKERFILE_PATH }}/VERSION)
+          docker run --rm --user root ${{ env.IMAGE_NAME }}:test unbound -V | head -1 | grep -qxF "Version ${expected}"
+          echo "✓ Unbound version is ${expected}"
 
       - name: Test - Configuration Validation
         run: |
@@ -378,10 +384,15 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Read Unbound Version
+        id: version
+        run: echo "version=$(cat ${{ env.DOCKERFILE_PATH }}/VERSION)" >> "$GITHUB_OUTPUT"
+
       - name: Build for ${{ matrix.platform }}
         uses: docker/build-push-action@v5
         with:
           context: ${{ env.DOCKERFILE_PATH }}
+          build-args: UNBOUND_VERSION=${{ steps.version.outputs.version }}
           platforms: ${{ matrix.platform }}
           load: false
           push: false
