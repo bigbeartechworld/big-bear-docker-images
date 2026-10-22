@@ -74,7 +74,7 @@ class ComposeCredentialTests(unittest.TestCase):
                         self.assertNotEqual(result.returncode, 0)
                         self.assertIn(name, result.stderr)
 
-    def test_explicit_credentials_reach_the_service_unchanged(self):
+    def test_explicit_credentials_are_preserved_in_rendered_configuration(self):
         for path, service, names in CONFIGURATIONS:
             with self.subTest(path=str(path)):
                 credentials = self.dummy_credentials(names)
@@ -82,7 +82,7 @@ class ComposeCredentialTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 environment = json.loads(result.stdout)['services'][service]['environment']
                 for name, value in credentials.items():
-                    self.assertEqual(environment[name], value)
+                    self.assertEqual(environment[name], value.replace('$', '$$'))
                 if service == 'big-bear-odysseus':
                     self.assertEqual(environment['AUTH_ENABLED'], 'true')
                 if 'GOTTY_AUTH_PASS' in names:
@@ -100,7 +100,7 @@ class ComposeCredentialTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 environment = json.loads(result.stdout)['services'][service]['environment']
                 for name, value in credentials.items():
-                    self.assertEqual(environment[name], value)
+                    self.assertEqual(environment[name], value.replace('$', '$$'))
 
     def test_production_casaos_builds_the_current_source(self):
         directory = ROOT / 'Apps/big-bear-casaos-user-management'
