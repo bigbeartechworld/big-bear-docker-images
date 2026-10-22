@@ -20,17 +20,41 @@ Reference: [MinIO Issue #21647](https://github.com/minio/minio/issues/21647)
 
 ## Quick Start
 
-### Using Docker Compose (Recommended)
+Set a private root username and password before starting any Compose variant.
+Missing or empty credentials stop configuration loading. In Bash:
 
 ```bash
-# From the Apps/minio directory
+read -r -p "MinIO root username: " MINIO_ROOT_USER
+read -r -s -p "MinIO root password: " MINIO_ROOT_PASSWORD
+printf '\n'
+export MINIO_ROOT_USER MINIO_ROOT_PASSWORD
+```
+
+### Using Docker Compose (Recommended)
+
+From `Apps/minio`, choose one command below using the exported credentials.
+The commands select the default, development, and production variants respectively.
+
+```bash
 docker-compose -f compose/docker-compose.yml up -d
-
-# Or for development
 docker-compose -f compose/docker-compose.dev.yml up -d
-
-# Or for production
 docker-compose -f compose/docker-compose.prod.yml up -d
+```
+
+To use a `.env` file instead, copy the example from `Apps/minio`:
+
+```bash
+cp config/.env.example .env
+```
+
+Edit `.env` to fill in both blank credential values and keep the file private.
+Then choose the matching variant below. `--env-file .env` explicitly loads the
+file from `Apps/minio` when `-f` selects a file in `compose/`.
+
+```bash
+docker-compose --env-file .env -f compose/docker-compose.yml up -d
+docker-compose --env-file .env -f compose/docker-compose.dev.yml up -d
+docker-compose --env-file .env -f compose/docker-compose.prod.yml up -d
 ```
 
 ### Using Docker
@@ -40,8 +64,8 @@ docker run -d \
   --name minio \
   -p 9000:9000 \
   -p 9001:9001 \
-  -e MINIO_ROOT_USER=minioadmin \
-  -e MINIO_ROOT_PASSWORD=minioadmin \
+  -e MINIO_ROOT_USER="${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}" \
+  -e MINIO_ROOT_PASSWORD="${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}" \
   -v minio_data:/data \
   bigbeartechworld/big-bear-minio:latest \
   server /data --console-address ":9001"
@@ -70,11 +94,9 @@ View all available tags: [Docker Hub Tags](https://hub.docker.com/r/bigbeartechw
 
 - **MinIO Console (Web UI)**: http://localhost:9001
 - **MinIO API**: http://localhost:9000
-- **Default Credentials**: 
-  - Username: `minioadmin`
-  - Password: `minioadmin`
 
-**⚠️ SECURITY WARNING**: Change the default credentials in production!
+Log in with the root credentials you supplied. The maintained Compose files
+provide no default credentials, including in development.
 
 ## Configuration
 
@@ -82,8 +104,8 @@ View all available tags: [Docker Hub Tags](https://hub.docker.com/r/bigbeartechw
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `MINIO_ROOT_USER` | Root username for MinIO | `minioadmin` |
-| `MINIO_ROOT_PASSWORD` | Root password for MinIO | `minioadmin` |
+| `MINIO_ROOT_USER` | Root username for MinIO | Required in Compose |
+| `MINIO_ROOT_PASSWORD` | Root password for MinIO | Required in Compose |
 | `MINIO_USERNAME` | Custom user name (optional) | - |
 | `MINIO_GROUPNAME` | Custom group name (optional) | - |
 | `MINIO_UID` | Custom user ID (optional) | `1000` |
@@ -111,11 +133,11 @@ For production deployments, you should:
    ```
    This ensures reproducible deployments and prevents unexpected updates.
 
-2. **Change default credentials**:
+2. **Require private credentials**:
    ```yaml
    environment:
-     MINIO_ROOT_USER: your-secure-username
-     MINIO_ROOT_PASSWORD: your-secure-password-min-8-chars
+     MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+     MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
    ```
 
 3. **Use persistent volumes**:
@@ -143,7 +165,7 @@ chmod +x mc
 sudo mv mc /usr/local/bin/
 
 # Configure alias
-mc alias set myminio http://localhost:9000 minioadmin minioadmin
+mc alias set myminio http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
 
 # List buckets
 mc ls myminio
@@ -166,8 +188,8 @@ MinIO is S3-compatible, so you can use the AWS CLI:
 # Configure AWS CLI
 aws configure --profile minio
 # Enter:
-# - AWS Access Key ID: minioadmin
-# - AWS Secret Access Key: minioadmin
+# - AWS Access Key ID: the MINIO_ROOT_USER you supplied
+# - AWS Secret Access Key: the MINIO_ROOT_PASSWORD you supplied
 # - Default region: us-east-1
 # - Default output format: json
 

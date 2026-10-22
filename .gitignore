@@ -17,6 +17,9 @@ package-lock.json
 
 # Secrets
 github.secrets
+.env
+.env.*
+!.env.example
 
 # IDE specific
 .vscode/

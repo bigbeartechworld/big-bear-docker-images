@@ -17,16 +17,16 @@
   },
   "environment": {
     "MINIO_ROOT_USER": {
-      "description": "MinIO root username",
-      "default": "minioadmin"
+      "description": "Required MinIO root username",
+      "default": ""
     },
     "MINIO_ROOT_PASSWORD": {
-      "description": "MinIO root password",
-      "default": "minioadmin"
+      "description": "Required private MinIO root password",
+      "default": ""
     }
   },
   "notes": [
-    "Default credentials are minioadmin:minioadmin - CHANGE THESE IN PRODUCTION!",
+    "Set MINIO_ROOT_USER and MINIO_ROOT_PASSWORD before starting any Compose variant; there are no credential fallbacks.",
     "Access the MinIO Console at http://localhost:9001",
     "API endpoint is available at http://localhost:9000",
     "Built from source following MinIO's source-only distribution model"

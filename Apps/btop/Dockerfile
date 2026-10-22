@@ -23,8 +23,8 @@ ENV LANG=C.UTF-8
 
 # Set default authentication (can be overridden at runtime)
 # Note: These values should be overridden at runtime for security
-ARG GOTTY_AUTH_USER=bigbear
-ARG GOTTY_AUTH_PASS=password
+ARG GOTTY_AUTH_USER
+ARG GOTTY_AUTH_PASS
 ARG GOTTY_AUTH_ENABLED=false
 ENV GOTTY_AUTH_USER=${GOTTY_AUTH_USER}
 ENV GOTTY_AUTH_PASS=${GOTTY_AUTH_PASS}

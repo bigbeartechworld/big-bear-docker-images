@@ -24,13 +24,22 @@ docker run -d \
 
 ### Parameters
 
+The Compose example enables authentication and requires `GOTTY_AUTH_USER` and
+`GOTTY_AUTH_PASS` in your environment. Set a private pair before running
+`docker compose up -d --build`. Missing or empty values stop Compose.
+
+When enabling authentication directly, supply both variables at runtime.
+The ttyd variant uses `TTYD_AUTH_USER` and `TTYD_AUTH_PASS` instead. Newly built
+images reject missing credentials when authentication is enabled; existing
+registry images require a rebuild and release to receive that startup guard.
+
 |                Parameter                | Function                                                      |
 | :-------------------------------------: | ------------------------------------------------------------- |
 |             `-p 7681:7681`              | Web UI port                                                   |
 | `-v /path/to/config:/root/.config/btop` | Configuration storage                                         |
 |      `-e GOTTY_AUTH_ENABLED=true`       | Enable basic authentication                                   |
-|      `-e GOTTY_AUTH_USER=username`      | Set auth username                                             |
-|      `-e GOTTY_AUTH_PASS=password`      | Set auth password                                             |
+|      `-e GOTTY_AUTH_USER`               | Pass your exported auth username                              |
+|      `-e GOTTY_AUTH_PASS`               | Pass your exported private auth password                      |
 |             `--privileged`              | Required for full access to system metrics and GPU monitoring |
 
 ## Notes on GPU Support

@@ -1,8 +1,10 @@
 services:
   big-bear-casaos-user-management:
-    # The service name for the user management system
-    image: bigbeartechworld/big-bear-casaos-user-management:0.1.1
-    # The Docker image to use for this service, with the specified version tag
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: big-bear-casaos-user-management:source
+    pull_policy: build
     container_name: big-bear-casaos-user-management
     # A custom name for the container, making it easier to identify
 
@@ -29,9 +31,9 @@ services:
       # Configures Flask to run in production mode
       - FLASK_ENV=production
       # Specifies the admin username for the service
-      - ADMIN_USERNAME=casaos
+      - "ADMIN_USERNAME=${ADMIN_USERNAME:?Set ADMIN_USERNAME}"
       # Specifies the admin password for the service
-      - ADMIN_PASSWORD=casaos
+      - "ADMIN_PASSWORD=${ADMIN_PASSWORD:?Set ADMIN_PASSWORD}"
 
     # Grants the container extended privileges, necessary for some operations
     privileged: true

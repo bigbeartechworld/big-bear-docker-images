@@ -32,8 +32,8 @@ ENV LANG=C.UTF-8
 
 # Set default authentication (can be overridden at runtime)
 # Note: These values should be overridden at runtime for security
-ARG TTYD_AUTH_USER=bigbear
-ARG TTYD_AUTH_PASS=password
+ARG TTYD_AUTH_USER
+ARG TTYD_AUTH_PASS
 ARG TTYD_AUTH_ENABLED=false
 ENV TTYD_AUTH_USER=${TTYD_AUTH_USER}
 ENV TTYD_AUTH_PASS=${TTYD_AUTH_PASS}

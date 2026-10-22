@@ -8,9 +8,8 @@ services:
       - "9002:9000"   # MinIO API (alternative port for dev)
       - "9003:9001"   # MinIO Console (Web UI - alternative port for dev)
     environment:
-      # Development credentials - NOT FOR PRODUCTION
-      MINIO_ROOT_USER: devadmin
-      MINIO_ROOT_PASSWORD: devpassword123
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
       MINIO_BROWSER: on
     volumes:
       - ./data:/data

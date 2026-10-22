@@ -8,8 +8,8 @@ services:
     environment:
       PUID: 1000
       PGID: 1000
-      AUTH_ENABLED: "false"
-      ODYSSEUS_ADMIN_PASSWORD: devpass123
+      AUTH_ENABLED: "true"
+      ODYSSEUS_ADMIN_PASSWORD: ${ODYSSEUS_ADMIN_PASSWORD:?Set ODYSSEUS_ADMIN_PASSWORD}
       SEARXNG_INSTANCE: http://searxng:8080
       CHROMADB_HOST: chromadb
       CHROMADB_PORT: 8000
