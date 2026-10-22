@@ -44,9 +44,9 @@ class ComposeCredentialTests(unittest.TestCase):
             'DOCKER_CONFIG': self.directory,
         }
 
-    def render(self, path, credentials):
+    def render(self, path, credentials, env_file=os.devnull):
         return subprocess.run(
-            [self.docker, 'compose', '--env-file', os.devnull,
+            [self.docker, 'compose', '--env-file', str(env_file),
              '--project-name', 'credential-regression', '-f', str(path),
              'config', '--format', 'json'],
             env={**self.environment, **credentials},
@@ -87,6 +87,33 @@ class ComposeCredentialTests(unittest.TestCase):
                     self.assertEqual(environment['AUTH_ENABLED'], 'true')
                 if 'GOTTY_AUTH_PASS' in names:
                     self.assertEqual(environment['GOTTY_AUTH_ENABLED'], 'true')
+
+    def test_explicit_env_file_supplies_credentials_without_exports(self):
+        for path, service, names in CONFIGURATIONS:
+            with self.subTest(path=str(path)):
+                credentials = self.dummy_credentials(names)
+                env_file = Path(self.directory) / '.env'
+                env_file.write_text(''.join(
+                    f"{name}='{value}'\n" for name, value in credentials.items()
+                ))
+                result = self.render(path, {}, env_file='.env')
+                self.assertEqual(result.returncode, 0, result.stderr)
+                environment = json.loads(result.stdout)['services'][service]['environment']
+                for name, value in credentials.items():
+                    self.assertEqual(environment[name], value)
+
+    def test_production_casaos_builds_the_current_source(self):
+        directory = ROOT / 'Apps/big-bear-casaos-user-management'
+        result = self.render(
+            directory / 'docker-compose.prod.yml',
+            self.dummy_credentials(('ADMIN_USERNAME', 'ADMIN_PASSWORD')),
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        service = json.loads(result.stdout)['services']['big-bear-casaos-user-management']
+        self.assertEqual(service['pull_policy'], 'build')
+        self.assertEqual(service['image'], 'big-bear-casaos-user-management:source')
+        self.assertEqual(Path(service['build']['context']).resolve(), directory.resolve())
+        self.assertEqual(service['build']['dockerfile'], 'Dockerfile')
 
 
 if __name__ == '__main__':

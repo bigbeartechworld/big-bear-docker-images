@@ -113,6 +113,22 @@ class AccountMutationAuthenticationTests(unittest.TestCase):
         self.assertEqual(response.headers['Location'], '/')
         self.assertEqual(self.rows(), [])
 
+    def test_colon_in_administrator_password_allows_authenticated_operation(self):
+        with patch.dict(os.environ, {
+            'ADMIN_USERNAME': 'test-admin',
+            'ADMIN_PASSWORD': 'test:password',
+        }, clear=True):
+            module = runpy.run_path(str(Path(web.__file__)))
+        with patch.dict(module['app'].config, TESTING=True, SECRET_KEY='test-session-key'):
+            response = module['app'].test_client().post(
+                '/remove_user',
+                data={'user_id': '1'},
+                headers=self.authorization(password='test:password'),
+            )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers['Location'], '/')
+        self.assertEqual(self.rows(), [])
+
 
 class AdministratorCredentialConfigurationTests(unittest.TestCase):
     def load_application(self, environment):
@@ -133,6 +149,15 @@ class AdministratorCredentialConfigurationTests(unittest.TestCase):
             with self.subTest(environment=environment):
                 with self.assertRaisesRegex(RuntimeError, 'ADMIN_USERNAME and ADMIN_PASSWORD'):
                     self.load_application(environment)
+
+    def test_colon_in_username_prevents_startup(self):
+        for username in ('test:admin', ':test-admin', 'test-admin:'):
+            with self.subTest(username=username):
+                with self.assertRaisesRegex(RuntimeError, 'ADMIN_USERNAME must not contain a colon'):
+                    self.load_application({
+                        'ADMIN_USERNAME': username,
+                        'ADMIN_PASSWORD': 'test-password',
+                    })
 
     def test_public_example_passwords_prevent_startup(self):
         for password in ('casaos', 'YOUR_SECURE_PASSWORD'):

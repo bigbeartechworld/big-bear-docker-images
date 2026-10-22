@@ -30,20 +30,31 @@ printf '\n'
 export MINIO_ROOT_USER MINIO_ROOT_PASSWORD
 ```
 
-You can instead copy `config/.env.example` to `.env` in this directory and fill
-in both blank credential values. Keep that file private.
-
 ### Using Docker Compose (Recommended)
 
+From `Apps/minio`, choose one command below using the exported credentials.
+The commands select the default, development, and production variants respectively.
+
 ```bash
-# From the Apps/minio directory
 docker-compose -f compose/docker-compose.yml up -d
-
-# Or for development
 docker-compose -f compose/docker-compose.dev.yml up -d
-
-# Or for production
 docker-compose -f compose/docker-compose.prod.yml up -d
+```
+
+To use a `.env` file instead, copy the example from `Apps/minio`:
+
+```bash
+cp config/.env.example .env
+```
+
+Edit `.env` to fill in both blank credential values and keep the file private.
+Then choose the matching variant below. `--env-file .env` explicitly loads the
+file from `Apps/minio` when `-f` selects a file in `compose/`.
+
+```bash
+docker-compose --env-file .env -f compose/docker-compose.yml up -d
+docker-compose --env-file .env -f compose/docker-compose.dev.yml up -d
+docker-compose --env-file .env -f compose/docker-compose.prod.yml up -d
 ```
 
 ### Using Docker

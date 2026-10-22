@@ -13,7 +13,7 @@ A self-hosted AI workspace (Python/FastAPI) packaged as a Docker image, built fr
 
 ## Quick Start (full stack)
 
-Set a private administrator password first. All Compose variants require it,
+From `Apps/odysseus`, set a private administrator password first. All Compose variants require it,
 including development, which now also enables login. In Bash:
 
 ```bash
@@ -37,9 +37,22 @@ Open `http://localhost:7000`. The stack also starts ChromaDB, SearXNG, and ntfy.
 
 LLM provider (Ollama/OpenAI) is user-supplied via env - see `config/.env.example`.
 
-The example leaves the password blank. If you copy it to `.env` in this
-directory, fill in a private value before starting the service. Existing
-deployments must also supply a password before restarting with these files.
+To use a `.env` file instead of the exported password, copy the example from
+`Apps/odysseus`:
+
+```bash
+cp config/.env.example .env
+```
+
+Edit `.env` to fill in the blank `ODYSSEUS_ADMIN_PASSWORD` with a private value.
+Keep the file private, then start the stack with `--env-file .env` to explicitly
+load it from `Apps/odysseus` when `-f` selects a file in `compose/`:
+
+```bash
+docker compose --env-file .env -f compose/docker-compose.yml up -d
+```
+
+Existing deployments must also supply a password before restarting with these files.
 
 ## Ports & Volumes
 

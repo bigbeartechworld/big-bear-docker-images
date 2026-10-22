@@ -14,6 +14,9 @@ ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '')
 if not ADMIN_USERNAME.strip() or not ADMIN_PASSWORD.strip():
     raise RuntimeError('Set nonempty ADMIN_USERNAME and ADMIN_PASSWORD before starting the application.')
 
+if ':' in ADMIN_USERNAME:
+    raise RuntimeError('ADMIN_USERNAME must not contain a colon.')
+
 if ADMIN_PASSWORD in {'casaos', 'YOUR_SECURE_PASSWORD'}:
     raise RuntimeError('ADMIN_PASSWORD must replace the public example password.')
 
