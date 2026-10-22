@@ -10,7 +10,7 @@ RUN git clone --depth 1 --branch v1.7.2 https://github.com/sorenisanerd/gotty.gi
 WORKDIR /gotty
 RUN go build
 
-FROM alpine:3.24.2
+FROM alpine:3.24.3
 
 # Install ncdu, procps, curl, iproute2, and clean up
 RUN apk add --no-cache \
