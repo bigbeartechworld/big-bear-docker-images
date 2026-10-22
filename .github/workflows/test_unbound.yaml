@@ -114,7 +114,7 @@ jobs:
         run: |
           echo "Testing Unbound version..."
           expected=$(cat ${{ env.DOCKERFILE_PATH }}/VERSION)
-          docker run --rm --user root ${{ env.IMAGE_NAME }}:test unbound -V | head -1 | grep -qF "Version ${expected}"
+          docker run --rm --user root ${{ env.IMAGE_NAME }}:test unbound -V | head -1 | grep -qxF "Version ${expected}"
           echo "✓ Unbound version is ${expected}"
 
       - name: Test - Configuration Validation
